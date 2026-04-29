@@ -1,28 +1,42 @@
 package com.ecommerce.order.controller;
-import com.ecommerce.order.entity.Order;
+
+import com.ecommerce.order.dto.OrderRequest;
+import com.ecommerce.order.dto.OrderResponse;
 import com.ecommerce.order.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
+
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
+
     private final OrderService orderService;
+
     public OrderController(OrderService orderService) {
         this.orderService = orderService;
     }
+
     @GetMapping
-    public List<Order> getAllOrders() {
+    public List<OrderResponse> getAllOrders() {
         return orderService.getAllOrders();
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.getOrderById(id));
+    }
+
     @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
-        Order created = orderService.createOrder(order);
+    public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest order) {
+        OrderResponse created = orderService.createOrder(order);
         return ResponseEntity.ok(created);
     }
+
     @PutMapping("/{id}/status")
-    public ResponseEntity<Order> updateOrderStatus(@PathVariable Long id, @RequestParam String status) {
-        Order updated = orderService.updateOrderStatus(id, status);
+    public ResponseEntity<OrderResponse> updateOrderStatus(@PathVariable Long id, @RequestParam String status) {
+        OrderResponse updated = orderService.updateOrderStatus(id, status);
         return ResponseEntity.ok(updated);
     }
 }

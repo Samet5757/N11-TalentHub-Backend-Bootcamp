@@ -1,6 +1,7 @@
 package com.ecommerce.cart.controller;
 
-import com.ecommerce.cart.entity.CartItem;
+import com.ecommerce.cart.dto.CartRequest;
+import com.ecommerce.cart.dto.CartResponse;
 import com.ecommerce.cart.service.CartService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -8,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/cart")
+@RequestMapping("/carts")
 public class CartController {
     private final CartService cartService;
 
@@ -17,19 +18,22 @@ public class CartController {
     }
 
     @GetMapping
-    public List<CartItem> getCart() {
-        return cartService.getAllItems();
+    public List<CartResponse> getCarts() {
+        return cartService.getAllCarts();
     }
 
-    @PostMapping("/add")
-    public ResponseEntity<CartItem> addItem(@RequestBody CartItem item) {
-        CartItem added = cartService.addItem(item);
-        return ResponseEntity.ok(added);
+    @GetMapping("/{cartId}")
+    public ResponseEntity<CartResponse> getCart(@PathVariable Long cartId) {
+        return ResponseEntity.ok(cartService.getCart(cartId));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> removeItem(@PathVariable Long id) {
-        cartService.removeItem(id);
-        return ResponseEntity.noContent().build();
+    @PostMapping
+    public ResponseEntity<CartResponse> createCart(@RequestBody CartRequest request) {
+        return ResponseEntity.ok(cartService.createCart(request));
+    }
+
+    @PostMapping("/{cartId}/apply-coupon")
+    public ResponseEntity<CartResponse> applyCoupon(@PathVariable Long cartId, @RequestParam String code) {
+        return ResponseEntity.ok(cartService.applyCoupon(cartId, code));
     }
 }
