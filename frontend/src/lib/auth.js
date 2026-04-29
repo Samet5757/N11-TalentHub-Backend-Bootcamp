@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'n11_token';
+const TOKEN_EVENT = 'n11-token-changed';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -6,10 +7,21 @@ export function getToken() {
 
 export function setToken(token) {
   localStorage.setItem(TOKEN_KEY, token);
+  window.dispatchEvent(new CustomEvent(TOKEN_EVENT));
 }
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new CustomEvent(TOKEN_EVENT));
+}
+
+export function onTokenChange(listener) {
+  window.addEventListener(TOKEN_EVENT, listener);
+  window.addEventListener('storage', listener);
+  return () => {
+    window.removeEventListener(TOKEN_EVENT, listener);
+    window.removeEventListener('storage', listener);
+  };
 }
 
 export function parseJwt(token) {

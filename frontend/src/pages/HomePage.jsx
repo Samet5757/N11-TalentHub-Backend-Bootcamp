@@ -55,8 +55,9 @@ export default function HomePage({ onQuickAdd }) {
 
   return (
     <div className="grid">
-      <div className="card">
+      <div className="card hero">
         <h1 className="h1">Ana Sayfa / Urun Arama</h1>
+        <p className="meta">Trend urunleri inceleyin, kategori ve metin arama ile listeyi hizla daraltin.</p>
         <div className="row">
           <input placeholder="Urun ara..." value={query} onChange={(e) => setQuery(e.target.value)} />
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
@@ -75,7 +76,7 @@ export default function HomePage({ onQuickAdd }) {
       <div className="grid products">
         {loading && <div className="meta">Yukleniyor...</div>}
         {products.map((p) => (
-          <article className="card" key={p.id}>
+          <article className="card product-card" key={p.id}>
             <img className="product-image" src={p.imageUrl || 'https://via.placeholder.com/400x260?text=Product'} alt={p.name} />
             <div className="tag">Stok: {p.stock}</div>
             <h3>{p.name}</h3>

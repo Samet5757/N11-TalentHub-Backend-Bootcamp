@@ -18,7 +18,7 @@ export default function ProductPage({ onQuickAdd }) {
   return (
     <div className="card">
       <h1 className="h1">{product.name}</h1>
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+      <div className="grid product-detail-grid">
         <img className="product-image" style={{ height: 320 }} src={product.imageUrl || 'https://via.placeholder.com/500x320?text=Product'} alt={product.name} />
         <div className="grid">
           <div><strong>Fiyat:</strong> {product.price} TL</div>

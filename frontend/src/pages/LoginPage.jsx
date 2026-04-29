@@ -25,9 +25,9 @@ export default function LoginPage({ setUser, onLoggedIn }) {
   }
 
   return (
-    <div className="card" style={{ maxWidth: 460, margin: '40px auto' }}>
+    <div className="card login-card">
       <h1 className="h1">Login</h1>
-      <p className="meta">Gateway auth endpoint baglantili ekran.</p>
+      <p className="meta">Guvenli giris ile sepet ve siparislerinize erisin.</p>
       <form onSubmit={submit} className="grid">
         <label>
           Kullanici Adi

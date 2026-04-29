@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { clearToken } from '../lib/auth';
 import { api } from '../lib/api';
 
-export default function Layout({ user, children, setUser }) {
+export default function Layout({ user, children, setUser, cartItemCount = 0 }) {
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -17,10 +17,13 @@ export default function Layout({ user, children, setUser }) {
     <>
       <header className="nav">
         <div className="container nav-inner">
-          <div className="brand" onClick={() => navigate('/')}>n11 Micro UI</div>
+          <div className="brand-block" onClick={() => navigate('/')}>
+            <div className="brand">n11 Micro UI</div>
+            <div className="brand-sub">Kurumsal E-Ticaret Deneyimi</div>
+          </div>
           <div className="actions">
             <Link className="btn" to="/">Ana Sayfa</Link>
-            <Link className="btn" to="/cart">Sepet</Link>
+            <Link className="btn" to="/cart">Sepet{cartItemCount > 0 ? ` (${cartItemCount})` : ''}</Link>
             <Link className="btn" to="/orders">Siparisler</Link>
             {user ? <button className="btn accent" onClick={handleLogout}>Cikis</button> : <Link className="btn primary" to="/login">Login</Link>}
           </div>

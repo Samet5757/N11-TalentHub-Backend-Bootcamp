@@ -7,7 +7,7 @@ import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
 import OrdersPage from './pages/OrdersPage';
 import { api } from './lib/api';
-import { getToken, getUserContext } from './lib/auth';
+import { getToken, getUserContext, onTokenChange } from './lib/auth';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -47,8 +47,21 @@ export default function App() {
   }
 
   useEffect(() => {
-    setTokenState(getToken());
-    loadUser();
+    const syncAuth = async () => {
+      const nextToken = getToken();
+      setTokenState(nextToken);
+      if (!nextToken) {
+        setUser(null);
+        setCart(null);
+        navigate('/login', { replace: true });
+        return;
+      }
+      await loadUser();
+    };
+
+    const unsubscribe = onTokenChange(syncAuth);
+    syncAuth();
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -115,8 +128,10 @@ export default function App() {
     }
   }
 
+  const cartItemCount = cart?.items?.reduce((sum, i) => sum + (i.quantity || 0), 0) || 0;
+
   return (
-    <Layout user={user} setUser={setUser}>
+    <Layout user={user} setUser={setUser} cartItemCount={cartItemCount}>
       <Routes>
         <Route path="/login" element={<LoginPage setUser={setUser} onLoggedIn={() => setTokenState(getToken())} />} />
         <Route path="/" element={<Protected token={token}><HomePage onQuickAdd={addToCart} /></Protected>} />
