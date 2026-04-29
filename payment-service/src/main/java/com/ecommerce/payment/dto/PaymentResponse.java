@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 public record PaymentResponse(
         Long id,
         Long orderId,
+        String paymentIntentId,
+        String idempotencyKey,
         Double amount,
         LocalDateTime paymentDate,
         PaymentStatus paymentStatus

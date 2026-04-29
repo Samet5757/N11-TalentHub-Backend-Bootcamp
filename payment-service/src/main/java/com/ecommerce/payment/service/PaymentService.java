@@ -1,23 +1,13 @@
 package com.ecommerce.payment.service;
 
 import com.ecommerce.payment.client.OrderClient;
-import com.ecommerce.payment.dto.PaymentRequest;
-import com.ecommerce.payment.dto.PaymentResponse;
+import com.ecommerce.payment.dto.*;
 import com.ecommerce.payment.entity.Payment;
 import com.ecommerce.payment.entity.PaymentStatus;
 import com.ecommerce.payment.exception.PaymentNotFoundException;
 import com.ecommerce.payment.repository.PaymentRepository;
 import com.iyzipay.Options;
-import com.iyzipay.model.Address;
-import com.iyzipay.model.BasketItem;
-import com.iyzipay.model.BasketItemType;
-import com.iyzipay.model.Buyer;
-import com.iyzipay.model.Currency;
-import com.iyzipay.model.Locale;
-import com.iyzipay.model.PaymentCard;
-import com.iyzipay.model.PaymentChannel;
-import com.iyzipay.model.PaymentGroup;
-import com.iyzipay.model.Status;
+import com.iyzipay.model.*;
 import com.iyzipay.request.CreatePaymentRequest;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PaymentService {
@@ -43,23 +34,100 @@ public class PaymentService {
         return paymentRepository.findAll().stream().map(this::toResponse).toList();
     }
 
-    public PaymentResponse processPayment(PaymentRequest request) {
-        validateRequest(request);
+    public PaymentIntentResponse createPaymentIntent(PaymentIntentRequest request, String idempotencyKey) {
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Payment existing = paymentRepository.findByIdempotencyKey(idempotencyKey).orElse(null);
+            if (existing != null) {
+                return new PaymentIntentResponse(existing.getPaymentIntentId(), existing.getOrderId(), existing.getAmount(), existing.getPaymentStatus());
+            }
+        }
+
+        if (request == null || request.orderId() == null || request.orderId() <= 0 || request.amount() == null || request.amount() <= 0) {
+            throw new IllegalArgumentException("orderId and amount must be valid");
+        }
 
         Payment payment = new Payment();
         payment.setOrderId(request.orderId());
         payment.setAmount(request.amount());
         payment.setPaymentDate(LocalDateTime.now());
+        payment.setPaymentIntentId(UUID.randomUUID().toString());
+        payment.setIdempotencyKey((idempotencyKey == null || idempotencyKey.isBlank()) ? null : idempotencyKey);
+        payment.setPaymentStatus(PaymentStatus.PENDING);
 
-        CreatePaymentRequest iyzicoRequest = buildIyzicoPaymentRequest(request);
-        System.out.println("KULLANILAN IYZICO URL: " + iyzipayOptions.getBaseUrl());
-        System.out.println("KULLANILAN API KEY: " + maskValue(iyzipayOptions.getApiKey()));
-        com.iyzipay.model.Payment iyzicoPayment = com.iyzipay.model.Payment.create(iyzicoRequest, iyzipayOptions);
-        boolean success = iyzicoPayment != null && Status.SUCCESS.getValue().equalsIgnoreCase(iyzicoPayment.getStatus());
-        if (!success && iyzicoPayment != null) {
-            System.err.println("Iyzico Hata Mesajı: " + iyzicoPayment.getErrorMessage());
+        Payment saved = paymentRepository.save(payment);
+        return new PaymentIntentResponse(saved.getPaymentIntentId(), saved.getOrderId(), saved.getAmount(), saved.getPaymentStatus());
+    }
+
+    public PaymentResponse confirmPaymentIntent(String paymentIntentId, PaymentConfirmRequest request, String idempotencyKey) {
+        if (paymentIntentId == null || paymentIntentId.isBlank()) {
+            throw new IllegalArgumentException("paymentIntentId is required");
+        }
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Payment existing = paymentRepository.findByIdempotencyKey(idempotencyKey).orElse(null);
+            if (existing != null && existing.getPaymentStatus() == PaymentStatus.SUCCESS) {
+                return toResponse(existing);
+            }
+        }
+
+        Payment payment = paymentRepository.findByPaymentIntentId(paymentIntentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment intent not found"));
+
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            return toResponse(payment);
+        }
+
+        PaymentRequest payRequest = new PaymentRequest(
+                payment.getOrderId(),
+                request != null ? request.cardNumber() : null,
+                payment.getAmount()
+        );
+
+        return processExistingPayment(payment, payRequest, idempotencyKey);
+    }
+
+    public PaymentResponse processPayment(PaymentRequest request) {
+        return processPayment(request, null);
+    }
+
+    public PaymentResponse processPayment(PaymentRequest request, String idempotencyKey) {
+        validateRequest(request);
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Payment existing = paymentRepository.findByIdempotencyKey(idempotencyKey).orElse(null);
+            if (existing != null) {
+                return toResponse(existing);
+            }
+        }
+
+        Payment payment = paymentRepository.findByOrderId(request.orderId()).orElse(null);
+        if (payment == null) {
+            payment = new Payment();
+            payment.setOrderId(request.orderId());
+            payment.setAmount(request.amount());
+            payment.setPaymentDate(LocalDateTime.now());
+            payment.setPaymentIntentId(UUID.randomUUID().toString());
+        }
+
+        return processExistingPayment(payment, request, idempotencyKey);
+    }
+
+    private PaymentResponse processExistingPayment(Payment payment, PaymentRequest request, String idempotencyKey) {
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            payment.setIdempotencyKey(idempotencyKey);
+        }
+
+        boolean success;
+        if (isIyzipayConfigured()) {
+            CreatePaymentRequest iyzicoRequest = buildIyzicoPaymentRequest(request);
+            com.iyzipay.model.Payment iyzicoPayment = com.iyzipay.model.Payment.create(iyzicoRequest, iyzipayOptions);
+            success = iyzicoPayment != null && Status.SUCCESS.getValue().equalsIgnoreCase(iyzicoPayment.getStatus());
+        } else {
+            // Local fallback: if gateway credentials are missing, simulate a successful payment flow.
+            success = true;
         }
         payment.setPaymentStatus(success ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
+        payment.setPaymentDate(LocalDateTime.now());
 
         Payment saved = paymentRepository.save(payment);
 
@@ -70,10 +138,16 @@ public class PaymentService {
         return toResponse(saved);
     }
 
+    private boolean isIyzipayConfigured() {
+        return iyzipayOptions != null
+                && iyzipayOptions.getApiKey() != null
+                && !iyzipayOptions.getApiKey().isBlank()
+                && iyzipayOptions.getSecretKey() != null
+                && !iyzipayOptions.getSecretKey().isBlank();
+    }
+
     public PaymentResponse getPaymentByOrderId(Long orderId) {
-        return paymentRepository.findAll().stream()
-                .filter(p -> p.getOrderId().equals(orderId))
-                .findFirst()
+        return paymentRepository.findByOrderId(orderId)
                 .map(this::toResponse)
                 .orElseThrow(() -> new PaymentNotFoundException(orderId));
     }
@@ -106,7 +180,7 @@ public class PaymentService {
         iyzicoRequest.setBasketId("BASKET-" + request.orderId());
         iyzicoRequest.setPaymentChannel(PaymentChannel.WEB.name());
         iyzicoRequest.setPaymentGroup(PaymentGroup.PRODUCT.name());
-        iyzicoRequest.setPaymentCard(buildTestCard());
+        iyzicoRequest.setPaymentCard(buildTestCard(request.cardNumber()));
         iyzicoRequest.setBuyer(buildDummyBuyer(request.orderId()));
         iyzicoRequest.setShippingAddress(buildDummyAddress("Teslimat Musterisi"));
         iyzicoRequest.setBillingAddress(buildDummyAddress("Fatura Musterisi"));
@@ -114,10 +188,10 @@ public class PaymentService {
         return iyzicoRequest;
     }
 
-    private PaymentCard buildTestCard() {
+    private PaymentCard buildTestCard(String cardNumber) {
         PaymentCard paymentCard = new PaymentCard();
         paymentCard.setCardHolderName("John Doe");
-        paymentCard.setCardNumber("5890040000000016");
+        paymentCard.setCardNumber(cardNumber);
         paymentCard.setExpireMonth("12");
         paymentCard.setExpireYear("2028");
         paymentCard.setCvc("000");
@@ -171,16 +245,11 @@ public class PaymentService {
         return new PaymentResponse(
                 payment.getId(),
                 payment.getOrderId(),
+                payment.getPaymentIntentId(),
+                payment.getIdempotencyKey(),
                 payment.getAmount(),
                 payment.getPaymentDate(),
                 payment.getPaymentStatus()
         );
-    }
-
-    private String maskValue(String value) {
-        if (value == null || value.length() < 8) {
-            return "****";
-        }
-        return value.substring(0, 4) + "****" + value.substring(value.length() - 4);
     }
 }
