@@ -24,8 +24,10 @@ public class ProductController {
             @RequestParam(required = false) Long sellerId,
             @RequestParam(defaultValue = "true") Boolean active,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return productService.listProducts(search, categoryId, sellerId, active, page, size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        return productService.listProducts(search, categoryId, sellerId, active, page, size, sortBy, sortDir);
     }
 
     @GetMapping("/{id}")
@@ -49,5 +51,11 @@ public class ProductController {
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id, @RequestBody ProductRequest request) {
         ProductResponse updated = productService.updateProduct(id, request);
         return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -27,9 +27,11 @@ public class ProductService {
     }
 
     public Page<ProductResponse> listProducts(String search, Long categoryId, Long sellerId, Boolean active,
-                                              int page, int size) {
+                                              int page, int size, String sortBy, String sortDir) {
         validatePageRequest(page, size);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        String sortField = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
         return productRepository
                 .findAll(ProductSpecifications.matches(search, categoryId, sellerId, active), pageable)
                 .map(productMapper::toResponse);
@@ -59,6 +61,11 @@ public class ProductService {
         Product product = findProduct(productId);
         productMapper.updateEntity(product, request);
         return productMapper.toResponse(productRepository.save(product));
+    }
+
+    public void deleteProduct(Long productId) {
+        Product product = findProduct(productId);
+        productRepository.delete(product);
     }
 
     private Product findProduct(Long productId) {

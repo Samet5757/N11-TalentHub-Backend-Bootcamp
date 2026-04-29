@@ -36,6 +36,10 @@ public class SellerService {
         return toResponse(sellerRepository.save(seller));
     }
 
+    public void deleteSeller(Long id) {
+        sellerRepository.delete(findSeller(id));
+    }
+
     private Seller findSeller(Long id) {
         return sellerRepository.findById(id)
                 .orElseThrow(() -> new SellerNotFoundException(id));
