@@ -1,6 +1,5 @@
-package com.ecommerce.cart.exception;
+package com.ecommerce.auth.exception;
 
-import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,36 +14,16 @@ import java.time.LocalDateTime;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(CartNotFoundException.class)
-    public ResponseEntity<ApiError> handleCartNotFound(CartNotFoundException exception, HttpServletRequest request) {
-        log.warn("Cart not found on {}: {}", request.getRequestURI(), exception.getMessage());
-        return buildError(HttpStatus.NOT_FOUND, exception.getMessage(), request.getRequestURI());
-    }
-
-    @ExceptionHandler(CouponValidationException.class)
-    public ResponseEntity<ApiError> handleCouponValidation(CouponValidationException exception,
-                                                            HttpServletRequest request) {
-        log.warn("Coupon validation failed on {}: {}", request.getRequestURI(), exception.getMessage());
-        return buildError(HttpStatus.BAD_REQUEST, exception.getMessage(), request.getRequestURI());
-    }
-
-    @ExceptionHandler(FeignException.NotFound.class)
-    public ResponseEntity<ApiError> handleCampaignNotFound(FeignException.NotFound exception,
-                                                            HttpServletRequest request) {
-        log.warn("Campaign not found on {}", request.getRequestURI());
-        return buildError(HttpStatus.NOT_FOUND, "Coupon code is invalid or inactive", request.getRequestURI());
-    }
-
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException exception,
                                                            HttpServletRequest request) {
-        log.warn("Bad request on {}: {}", request.getRequestURI(), exception.getMessage());
+        log.warn("Auth bad request on {}: {}", request.getRequestURI(), exception.getMessage());
         return buildError(HttpStatus.BAD_REQUEST, exception.getMessage(), request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception exception, HttpServletRequest request) {
-        log.error("Unexpected error on {}", request.getRequestURI(), exception);
+        log.error("Auth unexpected error on {}", request.getRequestURI(), exception);
         return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", request.getRequestURI());
     }
 
