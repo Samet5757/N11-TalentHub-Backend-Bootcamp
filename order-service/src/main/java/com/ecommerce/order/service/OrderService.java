@@ -9,6 +9,7 @@ import com.ecommerce.order.entity.OrderItem;
 import com.ecommerce.order.entity.OrderStatus;
 import com.ecommerce.order.exception.OrderNotFoundException;
 import com.ecommerce.order.repository.OrderRepository;
+import com.ecommerce.order.saga.OrderSagaPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +20,11 @@ import java.util.List;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderSagaPublisher orderSagaPublisher;
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, OrderSagaPublisher orderSagaPublisher) {
         this.orderRepository = orderRepository;
+        this.orderSagaPublisher = orderSagaPublisher;
     }
 
     public List<OrderResponse> getAllOrders() {
@@ -48,14 +51,16 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
         order.setDiscountAmount(discountAmount);
         order.setFinalAmount(finalAmount);
-        order.setStatus(OrderStatus.CREATED);
+        order.setStatus(OrderStatus.PENDING);
         order.setCreatedAt(LocalDateTime.now());
 
         List<OrderItem> mappedItems = mapItems(order, request.items());
         order.getItems().clear();
         order.getItems().addAll(mappedItems);
 
-        return toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        orderSagaPublisher.publishOrderCreated(saved);
+        return toResponse(saved);
     }
 
     public OrderResponse updateOrderStatus(Long id, String status) {

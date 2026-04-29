@@ -64,7 +64,7 @@ public class PaymentService {
         Payment saved = paymentRepository.save(payment);
 
         if (success) {
-            orderClient.updateOrderStatus(saved.getOrderId(), "PAID");
+            orderClient.updateOrderStatus(saved.getOrderId(), "PAYMENT_AUTHORIZED");
         }
 
         return toResponse(saved);
