@@ -55,3 +55,25 @@ services:
       POSTGRES_PASSWORD: password
     ports:
       - "5435:5432"
+
+  # Seller Service için PostgreSQL
+  seller-db:
+    image: postgres:15
+    container_name: seller-db
+    environment:
+      POSTGRES_DB: seller_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5436:5432"
+
+  # Campaign Service için PostgreSQL
+  campaign-db:
+    image: postgres:15
+    container_name: campaign-db
+    environment:
+      POSTGRES_DB: campaign_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5437:5432"

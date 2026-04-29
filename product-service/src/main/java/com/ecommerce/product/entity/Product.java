@@ -27,6 +27,9 @@ public class Product {
     @Column(nullable = false)
     private Integer stock;
 
+    @Version
+    private Integer version;
+
     @Column(nullable = false)
     private Long categoryId;
 
@@ -100,6 +103,8 @@ public class Product {
     public void setPrice(BigDecimal price) { this.price = price; }
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
     public Long getCategoryId() { return categoryId; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
     public Long getSellerId() { return sellerId; }

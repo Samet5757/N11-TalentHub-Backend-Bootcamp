@@ -22,7 +22,12 @@ import java.util.List;
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<Object> {
 
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final List<String> EXCLUDED_PREFIXES = List.of("/auth/");
+    private static final List<String> EXCLUDED_PREFIXES = List.of(
+            "/auth/",
+            "/swagger-ui",
+            "/v3/api-docs",
+            "/webjars/"
+    );
 
     @Value("${security.jwt.secret}")
     private String jwtSecret;

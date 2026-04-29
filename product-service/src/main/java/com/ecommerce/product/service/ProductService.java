@@ -8,8 +8,11 @@ import com.ecommerce.product.mapper.ProductMapper;
 import com.ecommerce.product.repository.ProductRepository;
 import com.ecommerce.product.repository.ProductSpecifications;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
@@ -24,7 +27,9 @@ public class ProductService {
     }
 
     public Page<ProductResponse> listProducts(String search, Long categoryId, Long sellerId, Boolean active,
-                                              Pageable pageable) {
+                                              int page, int size) {
+        validatePageRequest(page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return productRepository
                 .findAll(ProductSpecifications.matches(search, categoryId, sellerId, active), pageable)
                 .map(productMapper::toResponse);
@@ -34,6 +39,7 @@ public class ProductService {
         return productMapper.toResponse(findProduct(productId));
     }
 
+    @Transactional
     public ProductResponse updateStock(Long productId, Integer newStock) {
         validateStock(newStock);
         Product product = findProduct(productId);
@@ -93,6 +99,15 @@ public class ProductService {
     private void requirePositive(Long value, String message) {
         if (value == null || value <= 0) {
             throw new IllegalArgumentException(message);
+        }
+    }
+
+    private void validatePageRequest(int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page must be greater than or equal to zero");
+        }
+        if (size <= 0) {
+            throw new IllegalArgumentException("size must be greater than zero");
         }
     }
 }
