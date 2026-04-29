@@ -1,55 +1,81 @@
 # Ecommerce Microservices
 
-n11 TalentHub bitirme projesi icin Spring Boot mikroservisleri ve ileride eklenecek React frontend uygulamasinin ana reposu.
+Spring Boot mikroservisleri + React frontend ile gelistirilmis fullstack e-ticaret bitirme projesi.
 
 ## Moduller
 
-- `discovery-server`: Eureka service registry.
-- `api-gateway`: Backend servislerine giris noktasi.
-- `auth-service`: Kullanici ve kimlik dogrulama.
-- `product-service`: Urun katalog islemleri.
-- `cart-service`: Sepet islemleri.
-- `order-service`: Siparis islemleri.
-- `payment-service`: Odeme islemleri.
+- `discovery-server`: Eureka service registry
+- `api-gateway`: Tum backend giris noktasi + JWT filter
+- `auth-service`: Login/JWT/rol bazli kimlik dogrulama
+- `product-service`: Urun katalog, arama, filtre, pagination
+- `cart-service`: Sepet item CRUD + kupon uygulama/kaldirma
+- `order-service`: Siparis olusturma ve durum akisi
+- `payment-service`: Payment intent + confirm akisi
+- `seller-service`: Satici yonetimi
+- `campaign-service`: Kampanya dogrulama servisi
+- `frontend`: React (login, ana sayfa, urun detay, sepet, siparislerim)
 
-## Lokal Dogrulama
+## Hızlı Başlangıç (Docker)
 
-```bash
-mvn -q test
-```
-
-## Docker ile Tum Sistemi Ayaga Kaldirma
+Tum sistemi tek komutla kaldir:
 
 ```bash
 docker compose -f docker/docker-compose.yml up --build -d
 ```
 
+Ulasim:
+
 - Frontend: `http://localhost:3000`
 - API Gateway: `http://localhost:8080`
 
-## PostgreSQL Dev Profili
+## Demo Kullanıcıları
 
-Default profil hizli lokal dogrulama icin H2 kullanir. PostgreSQL ile calismak icin once veritabanlarini baslat:
+- Musteri:
+  - `username: customer1`
+  - `password: pass123`
+- Satici:
+  - `username: seller1`
+  - `password: pass123`
+
+## Frontend Akışı
+
+1. Login ol.
+2. Ana sayfada urunleri listele, arama/kategori ile daralt.
+3. Urun detay veya hizli buton ile sepete ekle.
+4. Sepette kupon uygula/kaldir, adet guncelle.
+5. Checkout ile siparis + odeme tamamla.
+6. Siparislerim ekraninda filtrele ve detaylari ac.
+
+## Kritik Komutlar
+
+Yalnizca frontend guncelle:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up --build -d frontend
 ```
 
-Sonra ilgili servisi `dev` Spring profili ve `postgres` Maven profili ile calistir:
+Canli stack smoke testi:
 
 ```bash
-mvn -Ppostgres spring-boot:run -Dspring-boot.run.profiles=dev
+bash ./smoke-test.sh
 ```
 
-Not: PostgreSQL driver'i ilk calistirmada Maven repository/mirror erisimi gerektirir.
+Bu script asagidaki zinciri test eder:
 
-## Uygulama Sirasi
+- login
+- auth me
+- urun secimi
+- sepet bul/olustur + item ekle
+- siparis olusturma
+- payment intent + confirm
+- siparislerimde yeni siparis dogrulama
 
-1. Proje temeli, gateway/discovery ve PostgreSQL dev profilleri.
-2. Product service: DTO, validation, pagination, category/seller alanlari.
-3. Auth service: BCrypt, JWT, customer/seller/admin rolleri.
-4. Cart service: kullanici bazli sepet, urun/stock kontrolu, kupon hesabi.
-5. Order service: order item modeli ve n11'e yakin siparis status akisi.
-6. Payment service: Iyzico checkout ve odeme koruma simulasyonu.
-7. React frontend: urun liste/detay, sepet, checkout, login/register.
-8. Nice-to-have: yorum, soru-cevap, magazalar ve kampanyalar.
+## Test Notu
+
+Projede `order-service`, `payment-service` ve `cart-service` icin yeni servis testleri eklidir.
+Eger ortamda kurumsal Maven mirror DNS erisimi yoksa test bagimlilik indirmesi hata verebilir.
+
+## Bilinen Notlar
+
+- `CODEX_HANDOVER.md` operasyonel takip dosyasidir ve git ignore altindadir.
+- Frontend tarafinda API cagrilari `/api/*` uzerinden proxylenir (React route cakismasi engellenmistir).

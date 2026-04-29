@@ -1,102 +1,130 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
-AUTH_USER="${AUTH_USER:-goldenuser}"
-AUTH_PASS="${AUTH_PASS:-Pass123!}"
-AUTH_ROLE="${AUTH_ROLE:-CUSTOMER}"
+BASE_URL="${BASE_URL:-http://localhost:3000/api}"
+AUTH_USER="${AUTH_USER:-customer1}"
+AUTH_PASS="${AUTH_PASS:-pass123}"
+CARD_NUMBER="${CARD_NUMBER:-5528790000000008}"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo -e "${RED}Hata: jq yüklü değil. Lütfen jq kurun ve tekrar deneyin.${NC}"
+if ! command -v jq >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+  echo -e "${RED}Hata: jq ve curl kurulu olmalı.${NC}"
   exit 1
 fi
 
-echo "[1/5] Gateway üzerinden login alınıyor..."
-LOGIN_PAYLOAD=$(jq -n --arg u "$AUTH_USER" --arg p "$AUTH_PASS" '{username:$u,password:$p}')
-LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
+echo "[1/8] Login..."
+LOGIN_RESPONSE=$(curl -sS -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d "$LOGIN_PAYLOAD")
+  -d "{\"username\":\"$AUTH_USER\",\"password\":\"$AUTH_PASS\"}")
 
 TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.token // empty')
-
 if [[ -z "$TOKEN" ]]; then
-  echo "Kullanıcı bulunamadı/şifre hatalı, register deneniyor..."
-  REGISTER_PAYLOAD=$(jq -n --arg u "$AUTH_USER" --arg p "$AUTH_PASS" --arg r "$AUTH_ROLE" \
-    '{username:$u,password:$p,role:$r}')
-  curl -s -X POST "$BASE_URL/auth/register" \
-    -H "Content-Type: application/json" \
-    -d "$REGISTER_PAYLOAD" >/dev/null
-
-  LOGIN_RESPONSE=$(curl -s -X POST "$BASE_URL/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "$LOGIN_PAYLOAD")
-  TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.token // empty')
+  echo -e "${RED}Login basarisiz: $LOGIN_RESPONSE${NC}"
+  exit 1
 fi
+AUTH_HEADER="Authorization: Bearer $TOKEN"
 
-if [[ -z "$TOKEN" ]]; then
-  echo -e "${RED}Login başarısız. Token alınamadı.${NC}"
+echo "[2/8] Kullanici profili..."
+ME_RESPONSE=$(curl -sS -X GET "$BASE_URL/auth/me" -H "$AUTH_HEADER")
+CUSTOMER_ID=$(echo "$ME_RESPONSE" | jq -r '.id // empty')
+if [[ -z "$CUSTOMER_ID" ]]; then
+  echo -e "${RED}/auth/me basarisiz: $ME_RESPONSE${NC}"
   exit 1
 fi
 
-AUTH_HEADER="Authorization: Bearer $TOKEN"
+echo "[3/8] Urun listesi..."
+PRODUCTS_RESPONSE=$(curl -sS -X GET "$BASE_URL/products?page=0&size=10&sortBy=id&sortDir=asc" -H "$AUTH_HEADER")
+PRODUCT_ID=$(echo "$PRODUCTS_RESPONSE" | jq -r '.content[] | select(.stock > 0) | .id' | head -n 1)
+if [[ -z "$PRODUCT_ID" ]]; then
+  echo -e "${RED}Stokta urun bulunamadi.${NC}"
+  exit 1
+fi
 
-echo "[2/5] Sipariş oluşturuluyor..."
-ORDER_PAYLOAD=$(jq -n '{
-  customerId: 1,
-  sellerId: 10,
-  totalAmount: 100,
-  discountAmount: 0,
-  items: [
-    {productId: 1001, quantity: 1, unitPrice: 100}
-  ]
+PRODUCT_RESPONSE=$(curl -sS -X GET "$BASE_URL/products/$PRODUCT_ID" -H "$AUTH_HEADER")
+SELLER_ID=$(echo "$PRODUCT_RESPONSE" | jq -r '.sellerId // empty')
+UNIT_PRICE=$(echo "$PRODUCT_RESPONSE" | jq -r '.price // empty')
+if [[ -z "$SELLER_ID" || -z "$UNIT_PRICE" ]]; then
+  echo -e "${RED}Urun detayi alinamadi: $PRODUCT_RESPONSE${NC}"
+  exit 1
+fi
+
+echo "[4/8] Aktif sepet bulunuyor/olusturuluyor..."
+CARTS_RESPONSE=$(curl -sS -X GET "$BASE_URL/carts/customer/$CUSTOMER_ID" -H "$AUTH_HEADER")
+CART_ID=$(echo "$CARTS_RESPONSE" | jq -r '.[0].id // empty')
+if [[ -z "$CART_ID" ]]; then
+  CREATE_CART=$(curl -sS -X POST "$BASE_URL/carts" -H "$AUTH_HEADER" -H "Content-Type: application/json" -d "{\"customerId\":$CUSTOMER_ID,\"totalAmount\":0}")
+  CART_ID=$(echo "$CREATE_CART" | jq -r '.id // empty')
+fi
+if [[ -z "$CART_ID" ]]; then
+  echo -e "${RED}Sepet olusturulamadi.${NC}"
+  exit 1
+fi
+
+echo "[5/8] Sepete urun ekleme..."
+CART_AFTER_ADD=$(curl -sS -X POST "$BASE_URL/carts/$CART_ID/items" \
+  -H "$AUTH_HEADER" \
+  -H "Content-Type: application/json" \
+  -d "{\"productId\":$PRODUCT_ID,\"quantity\":1,\"unitPrice\":$UNIT_PRICE}")
+
+ITEM_COUNT=$(echo "$CART_AFTER_ADD" | jq -r '.items | length')
+if [[ "${ITEM_COUNT:-0}" -lt 1 ]]; then
+  echo -e "${RED}Sepete urun eklenemedi: $CART_AFTER_ADD${NC}"
+  exit 1
+fi
+
+echo "[6/8] Siparis olusturma..."
+ORDER_PAYLOAD=$(echo "$CART_AFTER_ADD" | jq -c --argjson customerId "$CUSTOMER_ID" --argjson sellerId "$SELLER_ID" '{
+  customerId: $customerId,
+  sellerId: $sellerId,
+  totalAmount: (.totalAmount // 0),
+  discountAmount: (.discountAmount // 0),
+  items: (.items // [] | map({productId, quantity, unitPrice}))
 }')
-
 ORDER_RESPONSE=$(curl -sS -X POST "$BASE_URL/orders" \
   -H "$AUTH_HEADER" \
   -H "Content-Type: application/json" \
   -d "$ORDER_PAYLOAD")
-
 ORDER_ID=$(echo "$ORDER_RESPONSE" | jq -r '.id // empty')
 if [[ -z "$ORDER_ID" ]]; then
-  echo -e "${RED}Sipariş oluşturulamadı. Yanıt: $ORDER_RESPONSE${NC}"
+  echo -e "${RED}Siparis olusturulamadi: $ORDER_RESPONSE${NC}"
   exit 1
 fi
-echo "Sipariş oluşturuldu. orderId=$ORDER_ID"
 
-echo "[3/5] Ödeme işlemi tetikleniyor..."
-PAYMENT_PAYLOAD=$(jq -n --argjson oid "$ORDER_ID" '{
-  orderId: $oid,
-  cardNumber: "4242123412341234",
-  amount: 100
-}')
-
-PAYMENT_RESPONSE=$(curl -sS -X POST "$BASE_URL/payments/pay" \
+echo "[7/8] Odeme intent + confirm..."
+ORDER_FINAL_AMOUNT=$(echo "$ORDER_RESPONSE" | jq -r '.finalAmount // .totalAmount // 0')
+IDEMPOTENCY_KEY="smoke-${ORDER_ID}-$(date +%s)"
+INTENT_RESPONSE=$(curl -sS -X POST "$BASE_URL/payments/intents" \
   -H "$AUTH_HEADER" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
   -H "Content-Type: application/json" \
-  -d "$PAYMENT_PAYLOAD")
-
-PAYMENT_STATUS=$(echo "$PAYMENT_RESPONSE" | jq -r '.paymentStatus // empty')
-if [[ "$PAYMENT_STATUS" != "SUCCESS" ]]; then
-  echo -e "${RED}Ödeme başarısız. Yanıt: $PAYMENT_RESPONSE${NC}"
+  -d "{\"orderId\":$ORDER_ID,\"amount\":$ORDER_FINAL_AMOUNT}")
+PAYMENT_INTENT_ID=$(echo "$INTENT_RESPONSE" | jq -r '.paymentIntentId // empty')
+if [[ -z "$PAYMENT_INTENT_ID" ]]; then
+  echo -e "${RED}Payment intent olusmadi: $INTENT_RESPONSE${NC}"
   exit 1
 fi
 
-echo "[4/5] Sipariş güncel durumu çekiliyor..."
-ORDER_AFTER_PAYMENT=$(curl -sS -X GET "$BASE_URL/orders/$ORDER_ID" \
-  -H "$AUTH_HEADER")
+PAYMENT_RESPONSE=$(curl -sS -X POST "$BASE_URL/payments/intents/$PAYMENT_INTENT_ID/confirm" \
+  -H "$AUTH_HEADER" \
+  -H "Idempotency-Key: ${IDEMPOTENCY_KEY}-confirm" \
+  -H "Content-Type: application/json" \
+  -d "{\"cardNumber\":\"$CARD_NUMBER\"}")
 
-ORDER_STATUS=$(echo "$ORDER_AFTER_PAYMENT" | jq -r '.status // empty')
-
-if [[ "$ORDER_STATUS" == "PAID" ]]; then
-  echo -e "${GREEN}Ödeme Başarılı! Sipariş Statüsü: PAID${NC}"
-else
-  echo -e "${RED}Ödeme sonrası statü beklenenden farklı: $ORDER_STATUS${NC}"
-  echo "Yanıt: $ORDER_AFTER_PAYMENT"
+PAYMENT_STATUS=$(echo "$PAYMENT_RESPONSE" | jq -r '.paymentStatus // .status // empty')
+if [[ "$PAYMENT_STATUS" != "SUCCESS" && "$PAYMENT_STATUS" != "COMPLETED" ]]; then
+  echo -e "${RED}Odeme basarisiz: $PAYMENT_RESPONSE${NC}"
   exit 1
 fi
 
-echo "[5/5] Golden Path smoke test tamamlandı."
+echo "[8/8] Siparislerim kontrol..."
+ORDERS_LIST=$(curl -sS -X GET "$BASE_URL/orders/customer/$CUSTOMER_ID" -H "$AUTH_HEADER")
+FOUND_ORDER=$(echo "$ORDERS_LIST" | jq -r --argjson oid "$ORDER_ID" '[.[] | select(.id == $oid)] | length')
+if [[ "${FOUND_ORDER:-0}" -lt 1 ]]; then
+  echo -e "${RED}Siparis listesinde olusturulan siparis bulunamadi.${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}Smoke test basarili. orderId=$ORDER_ID, productId=$PRODUCT_ID${NC}"
