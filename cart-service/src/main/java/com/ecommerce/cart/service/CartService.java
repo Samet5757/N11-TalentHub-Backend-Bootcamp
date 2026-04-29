@@ -1,10 +1,9 @@
 package com.ecommerce.cart.service;
 
 import com.ecommerce.cart.client.CampaignClient;
-import com.ecommerce.cart.dto.CampaignValidationResponse;
-import com.ecommerce.cart.dto.CartRequest;
-import com.ecommerce.cart.dto.CartResponse;
+import com.ecommerce.cart.dto.*;
 import com.ecommerce.cart.entity.Cart;
+import com.ecommerce.cart.entity.CartItem;
 import com.ecommerce.cart.exception.CartNotFoundException;
 import com.ecommerce.cart.exception.CouponValidationException;
 import com.ecommerce.cart.repository.CartRepository;
@@ -26,18 +25,65 @@ public class CartService {
         return cartRepository.findAll().stream().map(this::toResponse).toList();
     }
 
+    public List<CartResponse> getCartsByCustomerId(Long customerId) {
+        return cartRepository.findByCustomerId(customerId).stream().map(this::toResponse).toList();
+    }
+
     public CartResponse getCart(Long cartId) {
         return toResponse(findCart(cartId));
     }
 
     public CartResponse createCart(CartRequest request) {
-        if (request == null || request.totalAmount() == null || request.totalAmount() < 0) {
-            throw new IllegalArgumentException("Cart totalAmount must be zero or greater");
+        if (request == null || request.totalAmount() == null || request.totalAmount() < 0 || request.customerId() == null) {
+            throw new IllegalArgumentException("Cart customerId and totalAmount are required");
         }
         Cart cart = new Cart();
+        cart.setCustomerId(request.customerId());
         cart.setTotalAmount(request.totalAmount());
         cart.setDiscountAmount(0.0);
         return toResponse(cartRepository.save(cart));
+    }
+
+    public CartResponse addItem(Long cartId, CartItemRequest request) {
+        validateItemRequest(request);
+        Cart cart = findCart(cartId);
+
+        CartItem item = new CartItem();
+        item.setCart(cart);
+        item.setProductId(request.productId());
+        item.setQuantity(request.quantity());
+        item.setUnitPrice(request.unitPrice());
+        cart.getItems().add(item);
+
+        recalculateTotal(cart);
+        return toResponse(cartRepository.save(cart));
+    }
+
+    public CartResponse updateItem(Long cartId, Long itemId, CartItemRequest request) {
+        validateItemRequest(request);
+        Cart cart = findCart(cartId);
+
+        CartItem item = cart.getItems().stream()
+                .filter(it -> it.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Cart item not found: " + itemId));
+
+        item.setProductId(request.productId());
+        item.setQuantity(request.quantity());
+        item.setUnitPrice(request.unitPrice());
+        recalculateTotal(cart);
+        return toResponse(cartRepository.save(cart));
+    }
+
+    public CartResponse removeItem(Long cartId, Long itemId) {
+        Cart cart = findCart(cartId);
+        cart.getItems().removeIf(item -> item.getId().equals(itemId));
+        recalculateTotal(cart);
+        return toResponse(cartRepository.save(cart));
+    }
+
+    public void deleteCart(Long cartId) {
+        cartRepository.delete(findCart(cartId));
     }
 
     public CartResponse applyCoupon(Long cartId, String code) {
@@ -52,6 +98,13 @@ public class CartService {
         cart.setCouponCode(campaign.code());
         cart.setDiscountAmount(discountAmount);
 
+        return toResponse(cartRepository.save(cart));
+    }
+
+    public CartResponse removeCoupon(Long cartId) {
+        Cart cart = findCart(cartId);
+        cart.setCouponCode(null);
+        cart.setDiscountAmount(0.0);
         return toResponse(cartRepository.save(cart));
     }
 
@@ -80,15 +133,36 @@ public class CartService {
         return Math.min(rawDiscount, amount);
     }
 
+    private void validateItemRequest(CartItemRequest request) {
+        if (request == null || request.productId() == null || request.productId() <= 0 || request.quantity() == null || request.quantity() <= 0 || request.unitPrice() == null || request.unitPrice() <= 0) {
+            throw new IllegalArgumentException("productId, quantity and unitPrice must be valid");
+        }
+    }
+
+    private void recalculateTotal(Cart cart) {
+        double total = cart.getItems().stream()
+                .mapToDouble(item -> item.getQuantity() * item.getUnitPrice())
+                .sum();
+        cart.setTotalAmount(total);
+        if (cart.getDiscountAmount() != null && cart.getDiscountAmount() > total) {
+            cart.setDiscountAmount(total);
+        }
+    }
+
     private CartResponse toResponse(Cart cart) {
         double total = cart.getTotalAmount() == null ? 0.0 : cart.getTotalAmount();
         double discount = cart.getDiscountAmount() == null ? 0.0 : cart.getDiscountAmount();
+        List<CartItemResponse> items = cart.getItems().stream()
+                .map(item -> new CartItemResponse(item.getId(), item.getProductId(), item.getQuantity(), item.getUnitPrice(), item.getQuantity() * item.getUnitPrice()))
+                .toList();
         return new CartResponse(
                 cart.getId(),
+                cart.getCustomerId(),
                 total,
                 cart.getCouponCode(),
                 discount,
-                Math.max(0.0, total - discount)
+                Math.max(0.0, total - discount),
+                items
         );
     }
 }
