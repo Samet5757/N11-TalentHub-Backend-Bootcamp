@@ -31,3 +31,4 @@ nbdist/
 ### mvn wrapper ###
 .mvn
 .mvn/*
+.DS_Store
