@@ -34,6 +34,8 @@ input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border)
 .h1 { font-size: 30px; font-weight: 800; margin: 0 0 12px; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .space { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pagination { justify-content: center; }
+.pagination-meta { margin-top: 10px; }
 .tag { display: inline-block; border-radius: 999px; padding: 5px 10px; background: #ebf7f5; color: #0d5c56; font-size: 12px; }
 .order-tag.pending, .order-tag.payment_pending, .order-tag.inventory_reserved { background: #fff4d6; color: #8a5a00; }
 .order-tag.payment_authorized, .order-tag.approved, .order-tag.completed, .order-tag.delivered { background: #e7f8ea; color: #166534; }

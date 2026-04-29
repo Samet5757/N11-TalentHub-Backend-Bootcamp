@@ -7,22 +7,29 @@ export default function HomePage({ onQuickAdd }) {
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [page, setPage] = useState(0);
+  const [size] = useState(20);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function load() {
+  async function load(nextPage = page) {
     setLoading(true);
     setError('');
     try {
-      const page = await api.products({
+      const response = await api.products({
         search: query,
         categoryId: categoryId || undefined,
-        page: 0,
-        size: 200,
+        page: nextPage,
+        size,
         sortBy: 'id',
         sortDir: 'asc'
       });
-      setProducts(page.content || []);
+      setProducts(response.content || []);
+      setTotalPages(response.totalPages || 0);
+      setTotalElements(response.totalElements || 0);
+      setPage(nextPage);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -30,7 +37,21 @@ export default function HomePage({ onQuickAdd }) {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(0); }, []);
+
+  function search() {
+    load(0);
+  }
+
+  function prevPage() {
+    if (page <= 0 || loading) return;
+    load(page - 1);
+  }
+
+  function nextPage() {
+    if (loading || page + 1 >= totalPages) return;
+    load(page + 1);
+  }
 
   return (
     <div className="grid">
@@ -42,9 +63,13 @@ export default function HomePage({ onQuickAdd }) {
             <option value="">Tum Kategoriler</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
-          <button className="btn primary" onClick={load}>Ara</button>
+          <button className="btn primary" onClick={search}>Ara</button>
         </div>
         {error && <div className="error">{error}</div>}
+        <div className="space pagination-meta">
+          <div className="meta">Toplam {totalElements} urun</div>
+          <div className="meta">Sayfa {totalPages ? page + 1 : 0}/{totalPages}</div>
+        </div>
       </div>
 
       <div className="grid products">
@@ -71,6 +96,10 @@ export default function HomePage({ onQuickAdd }) {
             </div>
           </article>
         ))}
+      </div>
+      <div className="row pagination">
+        <button className="btn" disabled={loading || page === 0} onClick={prevPage}>Onceki</button>
+        <button className="btn" disabled={loading || totalPages === 0 || page + 1 >= totalPages} onClick={nextPage}>Sonraki</button>
       </div>
     </div>
   );
