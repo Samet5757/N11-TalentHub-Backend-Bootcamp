@@ -1,6 +1,9 @@
 package com.ecommerce.auth.service;
+
 import com.ecommerce.auth.entity.User;
 import com.ecommerce.auth.repository.UserRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -12,10 +15,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthService {
     private final UserRepository userRepository;
+    private final Set<String> revokedTokens = ConcurrentHashMap.newKeySet();
 
     @Value("${security.jwt.secret}")
     private String jwtSecret;
@@ -23,15 +29,40 @@ public class AuthService {
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
+
     public User register(User user) {
         return userRepository.save(user);
     }
+
     public String login(String username, String password) {
         User user = userRepository.findByUsername(username);
         if (user != null && user.getPassword().equals(password)) {
             return generateToken(user);
         }
         return null;
+    }
+
+    public User getCurrentUser(String bearerToken) {
+        Claims claims = parseClaims(extractToken(bearerToken));
+        Long userId = Long.parseLong(claims.get("userId").toString());
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    public String refresh(String bearerToken) {
+        String token = extractToken(bearerToken);
+        if (revokedTokens.contains(token)) {
+            throw new IllegalArgumentException("Token revoked");
+        }
+        Claims claims = parseClaims(token);
+        Long userId = Long.parseLong(claims.get("userId").toString());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return generateToken(user);
+    }
+
+    public void logout(String bearerToken) {
+        revokedTokens.add(extractToken(bearerToken));
     }
 
     private String generateToken(User user) {
@@ -47,5 +78,18 @@ public class AuthService {
                 .setExpiration(Date.from(expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    private Claims parseClaims(String token) {
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        Jws<Claims> jws = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+        return jws.getBody();
+    }
+
+    private String extractToken(String bearerToken) {
+        if (bearerToken == null || !bearerToken.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Authorization header is required");
+        }
+        return bearerToken.substring(7);
     }
 }
