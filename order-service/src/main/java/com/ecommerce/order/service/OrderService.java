@@ -27,8 +27,14 @@ public class OrderService {
         this.orderSagaPublisher = orderSagaPublisher;
     }
 
+    @Transactional(readOnly = true)
     public List<OrderResponse> getAllOrders() {
         return orderRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersByCustomerId(Long customerId) {
+        return orderRepository.findByCustomerIdOrderByCreatedAtDescIdDesc(customerId).stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
