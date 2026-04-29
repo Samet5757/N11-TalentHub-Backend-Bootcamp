@@ -18,6 +18,15 @@ n11 TalentHub bitirme projesi icin Spring Boot mikroservisleri ve ileride eklene
 mvn -q test
 ```
 
+## Docker ile Tum Sistemi Ayaga Kaldirma
+
+```bash
+docker compose -f docker/docker-compose.yml up --build -d
+```
+
+- Frontend: `http://localhost:3000`
+- API Gateway: `http://localhost:8080`
+
 ## PostgreSQL Dev Profili
 
 Default profil hizli lokal dogrulama icin H2 kullanir. PostgreSQL ile calismak icin once veritabanlarini baslat:

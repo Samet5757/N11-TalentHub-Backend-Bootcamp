@@ -9,27 +9,27 @@ spring:
         - JwtAuthenticationFilter
       routes:
         - id: auth-service
-          uri: http://localhost:8085
+          uri: ${AUTH_SERVICE_URL:http://localhost:8085}
           predicates:
             - Path=/auth/**
         - id: product-service
-          uri: http://localhost:8081
+          uri: ${PRODUCT_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/products/**
         - id: cart-service
-          uri: http://localhost:8082
+          uri: ${CART_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/cart/**
+            - Path=/carts,/carts/**
         - id: order-service
-          uri: http://localhost:8083
+          uri: ${ORDER_SERVICE_URL:http://localhost:8083}
           predicates:
             - Path=/orders,/orders/**
         - id: payment-service
-          uri: http://localhost:8084
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/payments,/payments/**
         - id: seller-service
-          uri: http://localhost:8086
+          uri: ${SELLER_SERVICE_URL:http://localhost:8086}
           predicates:
             - Path=/sellers/**
 eureka:
