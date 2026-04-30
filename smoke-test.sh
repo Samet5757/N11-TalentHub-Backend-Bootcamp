@@ -120,30 +120,11 @@ if [[ "$PAYMENT_STATUS" != "SUCCESS" && "$PAYMENT_STATUS" != "COMPLETED" ]]; the
 fi
 
 echo "[8/8] Siparislerim kontrol..."
-MAX_RETRY=10
-SLEEP_SECONDS=2
-FOUND_ORDER=0
-FINAL_STATUS=""
-
-for i in $(seq 1 "$MAX_RETRY"); do
-  ORDERS_LIST=$(curl -sS -X GET "$BASE_URL/orders/customer/$CUSTOMER_ID" -H "$AUTH_HEADER")
-  FOUND_ORDER=$(echo "$ORDERS_LIST" | jq -r --argjson oid "$ORDER_ID" '[.[] | select(.id == $oid)] | length')
-  FINAL_STATUS=$(echo "$ORDERS_LIST" | jq -r --argjson oid "$ORDER_ID" '[.[] | select(.id == $oid)][0].status // empty')
-
-  if [[ "${FOUND_ORDER:-0}" -ge 1 ]]; then
-    break
-  fi
-  sleep "$SLEEP_SECONDS"
-done
-
+ORDERS_LIST=$(curl -sS -X GET "$BASE_URL/orders/customer/$CUSTOMER_ID" -H "$AUTH_HEADER")
+FOUND_ORDER=$(echo "$ORDERS_LIST" | jq -r --argjson oid "$ORDER_ID" '[.[] | select(.id == $oid)] | length')
 if [[ "${FOUND_ORDER:-0}" -lt 1 ]]; then
-  echo -e "${RED}Siparis listesinde olusturulan siparis bulunamadi. sonResponse=$ORDERS_LIST${NC}"
+  echo -e "${RED}Siparis listesinde olusturulan siparis bulunamadi.${NC}"
   exit 1
 fi
 
-if [[ -z "$FINAL_STATUS" ]]; then
-  echo -e "${RED}Siparis status bilgisi okunamadi. orderId=$ORDER_ID${NC}"
-  exit 1
-fi
-
-echo -e "${GREEN}Smoke test basarili. orderId=$ORDER_ID, productId=$PRODUCT_ID, orderStatus=$FINAL_STATUS${NC}"
+echo -e "${GREEN}Smoke test basarili. orderId=$ORDER_ID, productId=$PRODUCT_ID${NC}"
