@@ -83,24 +83,18 @@ export default function HomePage({ onQuickAdd }) {
       <div className="card hero">
         <h1 className="h1">Ana Sayfa / Urun Arama</h1>
         <p className="meta">Trend urunleri inceleyin, kategori ve metin arama ile listeyi hizla daraltin.</p>
-        <div className="hero-kpis">
-          <div className="kpi-chip"><span>Toplam Urun</span><strong>{totalElements}</strong></div>
-          <div className="kpi-chip"><span>Aktif Sayfa</span><strong>{totalPages ? page + 1 : 0}</strong></div>
-          <div className="kpi-chip"><span>Sayfa Boyutu</span><strong>{size}</strong></div>
-        </div>
         <div className="row">
           <input placeholder="Urun ara..." value={query} onChange={(e) => setQuery(e.target.value)} />
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">Tum Kategoriler</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
+          <div className="select-wrap">
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">Tum Kategoriler</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+            <span className="select-arrow">▼</span>
+          </div>
           <button className="btn primary" onClick={search}>Ara</button>
         </div>
         {error && <div className="error">{error}</div>}
-        <div className="space pagination-meta">
-          <div className="meta">Toplam {totalElements} urun</div>
-          <div className="meta">Sayfa {totalPages ? page + 1 : 0}/{totalPages}</div>
-        </div>
       </div>
 
       {!!featuredProducts.length && (
@@ -176,7 +170,11 @@ export default function HomePage({ onQuickAdd }) {
           );
         })}
       </div>
-      <div className="row pagination">
+      <div className="space pagination-meta-bottom">
+        <div className="meta">Toplam {totalElements} urun</div>
+        <div className="meta">Sayfa {totalPages ? page + 1 : 0}/{totalPages}</div>
+      </div>
+      <div className="row pagination pagination-bottom">
         <button className="btn" disabled={loading || page === 0} onClick={prevPage}>Onceki</button>
         <button className="btn" disabled={loading || totalPages === 0 || page + 1 >= totalPages} onClick={nextPage}>Sonraki</button>
       </div>

@@ -114,6 +114,9 @@ export default function OrdersPage({ user }) {
             </div>
             <div className="meta">{o.items?.length || 0} urun | Toplam: {tl(o.finalAmount)}</div>
             <div className="meta">Durum Akisi: {statusStage(o.status)}</div>
+            {o.status === 'COMPLETED' && (
+              <div className="meta">Bilgi: Siparis onay/fatura e-postasi sistem tarafinda otomatik gonderilir.</div>
+            )}
             <div style={{ marginTop: 10 }}>
               <button className="btn" onClick={() => setSelectedOrderId(selectedOrderId === o.id ? null : o.id)}>
                 {selectedOrderId === o.id ? 'Detayi Gizle' : 'Siparis Detayi'}

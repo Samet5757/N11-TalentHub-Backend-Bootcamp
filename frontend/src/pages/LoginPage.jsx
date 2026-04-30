@@ -26,6 +26,7 @@ export default function LoginPage({ setUser, onLoggedIn }) {
 
   return (
     <div className="card login-card">
+      <div className="login-badge">Secure Session</div>
       <h1 className="h1">Login</h1>
       <p className="meta">Guvenli giris ile sepet ve siparislerinize erisin.</p>
       <form onSubmit={submit} className="grid">

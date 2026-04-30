@@ -1,13 +1,47 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty, onApplyCoupon, onRemoveCoupon, onCheckout, isCheckingOut, checkoutState }) {
+export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty, onApplyCoupon, onRemoveCoupon, onCheckout, isCheckingOut, checkoutState, productIds = [], fetchProductById }) {
   const [coupon, setCoupon] = useState('');
   const [cardNumber, setCardNumber] = useState('5528790000000008');
+  const [cardHolderName, setCardHolderName] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [productNames, setProductNames] = useState({});
   const cleanedCard = cardNumber.replace(/\s+/g, '');
-  const canCheckout = !!cart.items?.length && !isCheckingOut && cleanedCard.length >= 12;
+  const cleanedCvv = cvv.replace(/\D+/g, '');
+  const normalizedExpiry = expiry.replace(/\s+/g, '');
+  const isExpiryValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(normalizedExpiry);
+  const canCheckout = !!cart.items?.length
+    && !isCheckingOut
+    && cleanedCard.length >= 12
+    && cardHolderName.trim().length >= 3
+    && isExpiryValid
+    && (cleanedCvv.length === 3 || cleanedCvv.length === 4);
   const hasCoupon = !!cart.couponCode;
 
   const tl = (value) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(value ?? 0);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fillNames() {
+      if (!fetchProductById || !productIds.length) return;
+      const missingIds = productIds.filter((id) => !productNames[id]);
+      if (!missingIds.length) return;
+      try {
+        const products = await Promise.all(missingIds.map((id) => fetchProductById(id)));
+        if (!isMounted) return;
+        const mapped = {};
+        products.forEach((p) => {
+          if (p?.id && (p?.name || p?.title)) mapped[p.id] = p.name || p.title;
+        });
+        setProductNames((prev) => ({ ...prev, ...mapped }));
+      } catch {
+        // Best effort: if product fetch fails, fallback label remains.
+      }
+    }
+    fillNames();
+    return () => { isMounted = false; };
+  }, [fetchProductById, productIds, productNames]);
 
   if (!cart) {
     return <div className="card"><p>Aktif sepet bulunamadi.</p></div>;
@@ -17,7 +51,6 @@ export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty
     <div className="grid">
       <div className="card">
         <h1 className="h1">Sepet</h1>
-        <div className="meta">Cart ID: {cart.id} | Customer: {cart.customerId}</div>
         <button className="btn" onClick={onReloadCart}>Yenile</button>
       </div>
 
@@ -25,7 +58,7 @@ export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty
         {cart.items?.length ? cart.items.map((item) => (
           <div key={item.id} className="space">
             <div>
-              <strong>Urun #{item.productId}</strong>
+              <strong>{productNames[item.productId] || `Urun #${item.productId}`}</strong>
               <div className="meta">Birim: {tl(item.unitPrice)} | Adet: {item.quantity}</div>
             </div>
             <div className="row">
@@ -51,13 +84,32 @@ export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty
       <div className="card grid">
         <h2>Checkout</h2>
         <label>
+          Kart Uzerindeki Isim
+          <input value={cardHolderName} onChange={(e) => setCardHolderName(e.target.value)} placeholder="Ad Soyad" />
+        </label>
+        <label>
           Kart Numarasi
           <input value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} />
         </label>
-        <div className="meta">Guvenlik icin minimum 12 hane kart numarasi giriniz.</div>
+        <div className="row">
+          <label style={{ flex: 1 }}>
+            Son Kullanma Tarihi (MM/YY)
+            <input value={expiry} onChange={(e) => setExpiry(e.target.value)} placeholder="12/29" maxLength={5} />
+          </label>
+          <label style={{ width: 140 }}>
+            CVV
+            <input value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D+/g, ''))} maxLength={4} placeholder="123" />
+          </label>
+        </div>
+        <div className="meta">Kart no min 12 hane, son kullanma MM/YY, CVV 3-4 hane olmalidir.</div>
         {checkoutState.error && <div className="error">{checkoutState.error}</div>}
         {checkoutState.ok && <div className="ok">{checkoutState.ok}</div>}
-        <button className="btn accent" onClick={() => onCheckout(cleanedCard)} disabled={!canCheckout}>
+        <button className="btn accent" onClick={() => onCheckout({
+          cardHolderName: cardHolderName.trim(),
+          cardNumber: cleanedCard,
+          expiry: normalizedExpiry,
+          cvv: cleanedCvv
+        })} disabled={!canCheckout}>
           {isCheckingOut ? <span className="spinner" /> : null}
           {isCheckingOut ? 'Odeme Aliniyor...' : 'Siparisi Olustur ve Odemeyi Tamamla'}
         </button>

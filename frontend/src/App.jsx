@@ -97,7 +97,7 @@ export default function App() {
     }
   }
 
-  async function checkout(cardNumber) {
+  async function checkout(paymentForm) {
     if (!cart?.items?.length || isCheckingOut) return;
     setCheckoutState({ error: '', ok: '' });
     setIsCheckingOut(true);
@@ -114,11 +114,12 @@ export default function App() {
       const order = await api.createOrder(orderPayload);
       const key = `checkout-${order.id}-${Date.now()}`;
       const intent = await api.createPaymentIntent({ orderId: order.id, amount: order.finalAmount ?? cart.finalAmount ?? cart.totalAmount }, key);
-      const payment = await api.confirmPayment(intent.paymentIntentId, cardNumber, `${key}-confirm`);
+      const payment = await api.confirmPayment(intent.paymentIntentId, paymentForm.cardNumber, `${key}-confirm`);
       await api.deleteCart(cart.id);
       await ensureCart(context.userId);
-      setCheckoutState({ error: '', ok: `Odeme tamamlandi. Payment #${payment.id}` });
-      toast.success(`Odeme tamamlandi. Payment #${payment.id}`);
+      const successMsg = `Odeme tamamlandi. Siparis #${order.id}, Payment #${payment.id}. Siparisiniz tamamlandiginda e-posta bildirimi gonderilecektir.`;
+      setCheckoutState({ error: '', ok: successMsg });
+      toast.success(`Odeme tamamlandi. Siparis #${order.id}`);
     } catch (err) {
       setCheckoutState({ error: err.message, ok: '' });
       toast.error(err.message || 'Odeme sirasinda hata olustu');
@@ -128,6 +129,7 @@ export default function App() {
   }
 
   const cartItemCount = cart?.items?.reduce((sum, i) => sum + (i.quantity || 0), 0) || 0;
+  const cartProductIds = [...new Set((cart?.items || []).map((i) => i.productId).filter(Boolean))];
 
   return (
     <Layout user={user} setUser={setUser} cartItemCount={cartItemCount}>
@@ -142,6 +144,8 @@ export default function App() {
           onUpdateQty={async (item, quantity) => { const next = await api.updateItem(cart.id, item.id, { productId: item.productId, quantity, unitPrice: item.unitPrice }); setCart(next); }}
           onApplyCoupon={async (code) => { const next = await api.applyCoupon(cart.id, code); setCart(next); }}
           onRemoveCoupon={async () => { const next = await api.removeCoupon(cart.id); setCart(next); }}
+          productIds={cartProductIds}
+          fetchProductById={api.product}
           onCheckout={checkout}
           isCheckingOut={isCheckingOut}
           checkoutState={checkoutState}
