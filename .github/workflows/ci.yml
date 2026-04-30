@@ -53,3 +53,52 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [build-and-test, frontend-build]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build and start full stack
+        run: docker compose -f docker/docker-compose.yml up --build -d
+
+      - name: Wait for API gateway
+        run: |
+          for i in {1..60}; do
+            if curl -fsS -X POST http://127.0.0.1:8080/auth/login \
+              -H 'Content-Type: application/json' \
+              -d '{"username":"customer1","password":"pass123"}' | grep -q '"token"'; then
+              echo "Gateway is reachable"
+              exit 0
+            fi
+            echo "Waiting gateway... try=$i"
+            sleep 5
+          done
+          echo "Gateway did not become ready in time"
+          exit 1
+
+      - name: Run smoke test
+        env:
+          BASE_URL: http://127.0.0.1:8080
+          AUTH_USER: customer1
+          AUTH_PASS: pass123
+        run: bash ./smoke-test.sh
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: docker compose -f docker/docker-compose.yml logs --no-color --tail=300
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f docker/docker-compose.yml down -v
