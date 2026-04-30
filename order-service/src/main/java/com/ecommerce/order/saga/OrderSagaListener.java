@@ -43,7 +43,8 @@ public class OrderSagaListener {
         if (event == null || eventDedupService.alreadyProcessed(GROUP, event.eventId())) {
             return;
         }
-        log.warn("Ignoring automatic inventory-failed cancellation for orderId={}, reason={}", event.orderId(), event.reason());
+        log.warn("Inventory reservation failed for orderId={}, reason={}", event.orderId(), event.reason());
+        orderService.updateOrderStatus(event.orderId(), "FAILED");
     }
 
     @RetryableTopic(attempts = "3", backoff = @Backoff(delay = 2000, multiplier = 2.0), dltTopicSuffix = ".dlq", autoCreateTopics = "true")
@@ -62,6 +63,8 @@ public class OrderSagaListener {
         if (event == null || eventDedupService.alreadyProcessed(GROUP, event.eventId())) {
             return;
         }
-        log.warn("Ignoring automatic payment-failed cancellation for orderId={}, reason={}", event.orderId(), event.reason());
+        log.warn("Payment failed for orderId={}, reason={}", event.orderId(), event.reason());
+        orderService.updateOrderStatus(event.orderId(), "FAILED");
+        orderService.updateOrderStatus(event.orderId(), "CANCELLED");
     }
 }

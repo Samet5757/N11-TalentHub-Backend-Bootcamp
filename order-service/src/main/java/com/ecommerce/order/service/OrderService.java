@@ -8,6 +8,7 @@ import com.ecommerce.order.entity.Order;
 import com.ecommerce.order.entity.OrderItem;
 import com.ecommerce.order.entity.OrderStatus;
 import com.ecommerce.order.exception.OrderNotFoundException;
+import com.ecommerce.order.notification.OrderEmailNotificationService;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.saga.OrderSagaPublisher;
 import org.slf4j.Logger;
@@ -28,12 +29,12 @@ public class OrderService {
             OrderStatus.PENDING, EnumSet.of(OrderStatus.INVENTORY_RESERVED, OrderStatus.PAYMENT_AUTHORIZED, OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED),
             OrderStatus.INVENTORY_RESERVED, EnumSet.of(OrderStatus.PAYMENT_PENDING, OrderStatus.PAYMENT_AUTHORIZED, OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED),
             OrderStatus.PAYMENT_PENDING, EnumSet.of(OrderStatus.PAYMENT_AUTHORIZED, OrderStatus.FAILED, OrderStatus.CANCELLED),
-            OrderStatus.PAYMENT_AUTHORIZED, EnumSet.of(OrderStatus.APPROVED, OrderStatus.COMPLETED, OrderStatus.SHIPPED),
-            OrderStatus.APPROVED, EnumSet.of(OrderStatus.SHIPPED, OrderStatus.COMPLETED),
-            OrderStatus.SHIPPED, EnumSet.of(OrderStatus.DELIVERED, OrderStatus.COMPLETED),
+            OrderStatus.PAYMENT_AUTHORIZED, EnumSet.of(OrderStatus.APPROVED, OrderStatus.COMPLETED, OrderStatus.SHIPPED, OrderStatus.FAILED, OrderStatus.CANCELLED),
+            OrderStatus.APPROVED, EnumSet.of(OrderStatus.SHIPPED, OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED),
+            OrderStatus.SHIPPED, EnumSet.of(OrderStatus.DELIVERED, OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED),
             OrderStatus.DELIVERED, EnumSet.of(OrderStatus.COMPLETED),
             OrderStatus.COMPLETED, EnumSet.noneOf(OrderStatus.class),
-            OrderStatus.FAILED, EnumSet.of(OrderStatus.CANCELLED),
+            OrderStatus.FAILED, EnumSet.of(OrderStatus.CANCELLED, OrderStatus.FAILED),
             OrderStatus.CANCELLED, EnumSet.noneOf(OrderStatus.class)
     );
     private static final Set<OrderStatus> CUSTOMER_CANCELLABLE = EnumSet.of(
@@ -46,10 +47,14 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderSagaPublisher orderSagaPublisher;
+    private final OrderEmailNotificationService orderEmailNotificationService;
 
-    public OrderService(OrderRepository orderRepository, OrderSagaPublisher orderSagaPublisher) {
+    public OrderService(OrderRepository orderRepository,
+                        OrderSagaPublisher orderSagaPublisher,
+                        OrderEmailNotificationService orderEmailNotificationService) {
         this.orderRepository = orderRepository;
         this.orderSagaPublisher = orderSagaPublisher;
+        this.orderEmailNotificationService = orderEmailNotificationService;
     }
 
     @Transactional(readOnly = true)
@@ -120,7 +125,11 @@ public class OrderService {
 
         order.setStatus(targetStatus);
         log.info("Updating order status id={} -> {}", id, targetStatus);
-        return toResponse(orderRepository.save(order));
+        Order updatedOrder = orderRepository.save(order);
+        if (targetStatus == OrderStatus.COMPLETED) {
+            orderEmailNotificationService.sendOrderCompletedMail(updatedOrder);
+        }
+        return toResponse(updatedOrder);
     }
 
     public OrderResponse cancelOrderByCustomer(Long id, Long customerId) {
