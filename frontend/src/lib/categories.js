@@ -1,14 +1,14 @@
 export const categories = [
-  { id: 1, label: 'Sports Shoes' },
-  { id: 2, label: 'Sneakers' },
-  { id: 3, label: 'Phones' },
-  { id: 4, label: 'Tablets' },
-  { id: 5, label: 'Fashion' },
-  { id: 6, label: 'Home Furniture' },
-  { id: 7, label: 'Kitchen' },
-  { id: 8, label: 'Cleaning' },
-  { id: 9, label: 'Beauty' },
-  { id: 10, label: 'Grocery' }
+  { id: 1, label: 'Spor Ayakkabi' },
+  { id: 2, label: 'Sneaker' },
+  { id: 3, label: 'Telefon' },
+  { id: 4, label: 'Tablet' },
+  { id: 5, label: 'Moda' },
+  { id: 6, label: 'Ev Mobilya' },
+  { id: 7, label: 'Mutfak' },
+  { id: 8, label: 'Temizlik' },
+  { id: 9, label: 'Kisisel Bakim' },
+  { id: 10, label: 'Market' }
 ];
 
 export function categoryLabel(categoryId) {

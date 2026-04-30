@@ -75,6 +75,16 @@ export default function OrdersPage({ user }) {
   }
 
   const tl = (value) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(value ?? 0);
+  const canCancel = (status) => ['PENDING', 'INVENTORY_RESERVED', 'PAYMENT_PENDING', 'PAYMENT_AUTHORIZED', 'APPROVED'].includes(status);
+
+  async function handleCancel(orderId) {
+    try {
+      const updated = await api.cancelOrder(orderId);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)));
+    } catch (e) {
+      setError(e.message || 'Siparis iptal edilemedi');
+    }
+  }
 
   return (
     <div className="card">
@@ -108,6 +118,11 @@ export default function OrdersPage({ user }) {
               <button className="btn" onClick={() => setSelectedOrderId(selectedOrderId === o.id ? null : o.id)}>
                 {selectedOrderId === o.id ? 'Detayi Gizle' : 'Siparis Detayi'}
               </button>
+              {canCancel(o.status) && (
+                <button className="btn" style={{ marginLeft: 8 }} onClick={() => handleCancel(o.id)}>
+                  Siparisi Iptal Et
+                </button>
+              )}
             </div>
             {selectedOrderId === o.id && (
               <div className="order-detail">

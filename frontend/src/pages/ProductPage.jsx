@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { categoryLabel } from '../lib/categories';
+import { presentProduct } from '../lib/productPresentation';
 
 export default function ProductPage({ onQuickAdd }) {
   const { id } = useParams();
@@ -14,12 +15,13 @@ export default function ProductPage({ onQuickAdd }) {
 
   if (error) return <div className="error">{error}</div>;
   if (!product) return <div className="meta">Yukleniyor...</div>;
+  const displayProduct = presentProduct(product);
 
   return (
     <div className="card">
-      <h1 className="h1">{product.name}</h1>
+      <h1 className="h1">{displayProduct.displayName}</h1>
       <div className="grid product-detail-grid">
-        <img className="product-image" style={{ height: 320 }} src={product.imageUrl || 'https://via.placeholder.com/500x320?text=Product'} alt={product.name} />
+        <img className="product-image" style={{ height: 320 }} src={displayProduct.displayImageUrl} alt={displayProduct.displayName} />
         <div className="grid">
           <div><strong>Fiyat:</strong> {product.price} TL</div>
           <div><strong>Marka:</strong> {product.brand}</div>

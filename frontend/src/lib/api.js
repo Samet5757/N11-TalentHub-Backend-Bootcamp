@@ -51,6 +51,7 @@ export const api = {
   deleteCart: (cartId) => request(`/carts/${cartId}`, { method: 'DELETE' }),
   createOrder: (payload) => request('/orders', { method: 'POST', body: JSON.stringify(payload) }),
   ordersByCustomer: (customerId) => request(`/orders/customer/${customerId}`),
+  cancelOrder: (orderId) => request(`/orders/${orderId}/cancel`, { method: 'PUT' }),
   createPaymentIntent: (payload, key) => request('/payments/intents', { method: 'POST', headers: { 'Idempotency-Key': key }, body: JSON.stringify(payload) }),
   confirmPayment: (paymentIntentId, cardNumber, key) => request(`/payments/intents/${paymentIntentId}/confirm`, {
     method: 'POST',

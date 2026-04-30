@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { categories, categoryLabel } from '../lib/categories';
+import { presentProduct } from '../lib/productPresentation';
 
 export default function HomePage({ onQuickAdd }) {
   const [products, setProducts] = useState([]);
@@ -13,6 +14,8 @@ export default function HomePage({ onQuickAdd }) {
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const featuredProducts = products.slice(0, 4);
+  const dealProducts = products.slice(4, 10);
 
   async function load(nextPage = page) {
     setLoading(true);
@@ -55,9 +58,36 @@ export default function HomePage({ onQuickAdd }) {
 
   return (
     <div className="grid">
+      <section className="home-banners">
+        <div className="banner-main card">
+          <div className="banner-badge">Mega Firsatlar</div>
+          <h1>Super Market Place Deneyimi</h1>
+          <p>Bugune ozel secili urunlerde hizli teslimat ve avantajli fiyatlar.</p>
+          <div className="row">
+            <button className="btn primary" onClick={search}>Kampanyalari Kesfet</button>
+            <span className="meta">Ayni gun kargo uygun urunler</span>
+          </div>
+        </div>
+        <div className="banner-side card">
+          <div className="mini-banner">
+            <strong>Elektronik Haftasi</strong>
+            <span>Telefon ve tablette ekstra kuponlar</span>
+          </div>
+          <div className="mini-banner">
+            <strong>Sepette Avantaj</strong>
+            <span>Coklu urun aliminda ek indirim</span>
+          </div>
+        </div>
+      </section>
+
       <div className="card hero">
         <h1 className="h1">Ana Sayfa / Urun Arama</h1>
         <p className="meta">Trend urunleri inceleyin, kategori ve metin arama ile listeyi hizla daraltin.</p>
+        <div className="hero-kpis">
+          <div className="kpi-chip"><span>Toplam Urun</span><strong>{totalElements}</strong></div>
+          <div className="kpi-chip"><span>Aktif Sayfa</span><strong>{totalPages ? page + 1 : 0}</strong></div>
+          <div className="kpi-chip"><span>Sayfa Boyutu</span><strong>{size}</strong></div>
+        </div>
         <div className="row">
           <input placeholder="Urun ara..." value={query} onChange={(e) => setQuery(e.target.value)} />
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
@@ -73,14 +103,61 @@ export default function HomePage({ onQuickAdd }) {
         </div>
       </div>
 
+      {!!featuredProducts.length && (
+        <section className="card">
+          <div className="space">
+            <h2 className="section-title">One Cikan Urunler</h2>
+            <span className="meta">Trend ve yuksek talepli urunler</span>
+          </div>
+          <div className="featured-grid">
+            {featuredProducts.map((p) => {
+              const displayProduct = presentProduct(p);
+              return (
+                <article key={`featured-${p.id}`} className="featured-item">
+                  <img className="product-image" src={displayProduct.displayImageUrl} alt={displayProduct.displayName} />
+                  <h3>{displayProduct.displayName}</h3>
+                  <strong>{p.price} TL</strong>
+                  <button
+                    className={`btn ${p.stock > 0 ? 'primary' : 'soldout'}`}
+                    onClick={() => onQuickAdd(displayProduct)}
+                    disabled={p.stock <= 0}
+                  >
+                    {p.stock <= 0 ? 'Tukendi' : 'Sepete Ekle'}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {!!dealProducts.length && (
+        <section className="card deal-strip">
+          <h2 className="section-title">Gunun Firsatlari</h2>
+          <div className="deal-list">
+            {dealProducts.map((p) => {
+              const displayProduct = presentProduct(p);
+              return (
+                <button key={`deal-${p.id}`} className="deal-chip" onClick={() => onQuickAdd(displayProduct)} disabled={p.stock <= 0}>
+                  <span>{displayProduct.displayName}</span>
+                  <strong>{p.price} TL</strong>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <div className="grid products">
         {loading && <div className="meta">Yukleniyor...</div>}
-        {products.map((p) => (
+        {products.map((p) => {
+          const displayProduct = presentProduct(p);
+          return (
           <article className="card product-card" key={p.id}>
-            <img className="product-image" src={p.imageUrl || 'https://via.placeholder.com/400x260?text=Product'} alt={p.name} />
+            <img className="product-image" src={displayProduct.displayImageUrl} alt={displayProduct.displayName} />
             <div className="tag">Stok: {p.stock}</div>
-            <h3>{p.name}</h3>
-            <div className="meta">{p.brand} | {categoryLabel(p.categoryId)} | Seller #{p.sellerId}</div>
+            <h3>{displayProduct.displayName}</h3>
+            <div className="meta product-meta-line">{p.brand} | {categoryLabel(p.categoryId)} | Seller #{p.sellerId}</div>
             <p className="meta">{p.description?.slice(0, 80)}</p>
             <div className="space">
               <strong>{p.price} TL</strong>
@@ -88,7 +165,7 @@ export default function HomePage({ onQuickAdd }) {
                 <Link className="btn" to={`/products/${p.id}`}>Detay</Link>
                 <button
                   className={`btn ${p.stock > 0 ? 'primary' : 'soldout'}`}
-                  onClick={() => onQuickAdd(p)}
+                  onClick={() => onQuickAdd(displayProduct)}
                   disabled={p.stock <= 0}
                 >
                   {p.stock <= 0 ? 'Tukendi' : 'Sepete Ekle'}
@@ -96,7 +173,8 @@ export default function HomePage({ onQuickAdd }) {
               </div>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
       <div className="row pagination">
         <button className="btn" disabled={loading || page === 0} onClick={prevPage}>Onceki</button>

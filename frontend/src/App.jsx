@@ -87,7 +87,6 @@ export default function App() {
         : await api.addItem(activeCart.id, { productId: product.id, quantity: 1, unitPrice: product.price });
       setCart(next);
       toast.success('Urun sepete eklendi.');
-      navigate('/cart');
     } catch (err) {
       if (err.message?.includes('Optimistic') || err.message?.includes('stok bilgisi')) {
         toast.error('Urun stok bilgisi guncellendi, lutfen sayfayi yenileyin');
