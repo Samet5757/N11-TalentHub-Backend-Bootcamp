@@ -141,6 +141,7 @@ public class PaymentService {
         if (success) {
             log.info("Payment successful for orderId={}, updating order status", saved.getOrderId());
             orderClient.updateOrderStatus(saved.getOrderId(), "PAYMENT_AUTHORIZED");
+            orderClient.updateOrderStatus(saved.getOrderId(), "COMPLETED");
         } else {
             log.warn("Payment failed for orderId={}", saved.getOrderId());
         }

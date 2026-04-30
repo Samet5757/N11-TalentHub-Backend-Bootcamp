@@ -63,6 +63,13 @@ public class OrderController {
         return ResponseEntity.ok(updated);
     }
 
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<OrderResponse> cancelOrder(@PathVariable Long id, @RequestHeader HttpHeaders headers) {
+        Long customerId = requireCustomer(headers);
+        OrderResponse updated = orderService.cancelOrderByCustomer(id, customerId);
+        return ResponseEntity.ok(updated);
+    }
+
     private boolean isInternalPaymentCall(HttpHeaders headers) {
         String source = headers.getFirst("X-Internal-Service");
         return "payment-service".equalsIgnoreCase(source);

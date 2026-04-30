@@ -11,20 +11,19 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
-
-import java.math.BigDecimal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class OrderSagaListener {
     private static final String GROUP = "order-orchestrator";
+    private static final Logger log = LoggerFactory.getLogger(OrderSagaListener.class);
 
     private final OrderService orderService;
-    private final OrderSagaPublisher orderSagaPublisher;
     private final EventDedupService eventDedupService;
 
-    public OrderSagaListener(OrderService orderService, OrderSagaPublisher orderSagaPublisher, EventDedupService eventDedupService) {
+    public OrderSagaListener(OrderService orderService, EventDedupService eventDedupService) {
         this.orderService = orderService;
-        this.orderSagaPublisher = orderSagaPublisher;
         this.eventDedupService = eventDedupService;
     }
 
@@ -36,8 +35,6 @@ public class OrderSagaListener {
         }
         orderService.updateOrderStatus(event.orderId(), "INVENTORY_RESERVED");
         orderService.updateOrderStatus(event.orderId(), "PAYMENT_PENDING");
-        BigDecimal amount = BigDecimal.valueOf(orderService.getOrderById(event.orderId()).finalAmount());
-        orderSagaPublisher.publishStartPayment(event.orderId(), amount, event.correlationId());
     }
 
     @RetryableTopic(attempts = "3", backoff = @Backoff(delay = 2000, multiplier = 2.0), dltTopicSuffix = ".dlq", autoCreateTopics = "true")
@@ -46,8 +43,7 @@ public class OrderSagaListener {
         if (event == null || eventDedupService.alreadyProcessed(GROUP, event.eventId())) {
             return;
         }
-        orderService.updateOrderStatus(event.orderId(), "FAILED");
-        orderService.updateOrderStatus(event.orderId(), "CANCELLED");
+        log.warn("Ignoring automatic inventory-failed cancellation for orderId={}, reason={}", event.orderId(), event.reason());
     }
 
     @RetryableTopic(attempts = "3", backoff = @Backoff(delay = 2000, multiplier = 2.0), dltTopicSuffix = ".dlq", autoCreateTopics = "true")
@@ -66,7 +62,6 @@ public class OrderSagaListener {
         if (event == null || eventDedupService.alreadyProcessed(GROUP, event.eventId())) {
             return;
         }
-        orderService.updateOrderStatus(event.orderId(), "FAILED");
-        orderService.updateOrderStatus(event.orderId(), "CANCELLED");
+        log.warn("Ignoring automatic payment-failed cancellation for orderId={}, reason={}", event.orderId(), event.reason());
     }
 }

@@ -16,11 +16,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+    private static final Map<OrderStatus, EnumSet<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
+            OrderStatus.PENDING, EnumSet.of(OrderStatus.INVENTORY_RESERVED, OrderStatus.PAYMENT_AUTHORIZED, OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED),
+            OrderStatus.INVENTORY_RESERVED, EnumSet.of(OrderStatus.PAYMENT_PENDING, OrderStatus.PAYMENT_AUTHORIZED, OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.CANCELLED),
+            OrderStatus.PAYMENT_PENDING, EnumSet.of(OrderStatus.PAYMENT_AUTHORIZED, OrderStatus.FAILED, OrderStatus.CANCELLED),
+            OrderStatus.PAYMENT_AUTHORIZED, EnumSet.of(OrderStatus.APPROVED, OrderStatus.COMPLETED, OrderStatus.SHIPPED),
+            OrderStatus.APPROVED, EnumSet.of(OrderStatus.SHIPPED, OrderStatus.COMPLETED),
+            OrderStatus.SHIPPED, EnumSet.of(OrderStatus.DELIVERED, OrderStatus.COMPLETED),
+            OrderStatus.DELIVERED, EnumSet.of(OrderStatus.COMPLETED),
+            OrderStatus.COMPLETED, EnumSet.noneOf(OrderStatus.class),
+            OrderStatus.FAILED, EnumSet.of(OrderStatus.CANCELLED),
+            OrderStatus.CANCELLED, EnumSet.noneOf(OrderStatus.class)
+    );
+    private static final Set<OrderStatus> CUSTOMER_CANCELLABLE = EnumSet.of(
+            OrderStatus.PENDING,
+            OrderStatus.INVENTORY_RESERVED,
+            OrderStatus.PAYMENT_PENDING,
+            OrderStatus.PAYMENT_AUTHORIZED,
+            OrderStatus.APPROVED
+    );
 
     private final OrderRepository orderRepository;
     private final OrderSagaPublisher orderSagaPublisher;
@@ -87,9 +109,39 @@ public class OrderService {
             throw new IllegalArgumentException("Unsupported order status: " + status);
         }
 
+        OrderStatus currentStatus = order.getStatus();
+        if (currentStatus == targetStatus) {
+            return toResponse(order);
+        }
+        if (!isTransitionAllowed(currentStatus, targetStatus)) {
+            log.warn("Ignoring invalid order status transition id={} {} -> {}", id, currentStatus, targetStatus);
+            return toResponse(order);
+        }
+
         order.setStatus(targetStatus);
         log.info("Updating order status id={} -> {}", id, targetStatus);
         return toResponse(orderRepository.save(order));
+    }
+
+    public OrderResponse cancelOrderByCustomer(Long id, Long customerId) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException(id));
+        if (!order.getCustomerId().equals(customerId)) {
+            throw new IllegalArgumentException("Order does not belong to customer");
+        }
+        if (!CUSTOMER_CANCELLABLE.contains(order.getStatus())) {
+            throw new IllegalStateException("Order cannot be cancelled in current status: " + order.getStatus());
+        }
+        order.setStatus(OrderStatus.CANCELLED);
+        log.info("Customer cancelled order id={}, customerId={}", id, customerId);
+        return toResponse(orderRepository.save(order));
+    }
+
+    private boolean isTransitionAllowed(OrderStatus from, OrderStatus to) {
+        if (from == null || to == null) {
+            return false;
+        }
+        return ALLOWED_TRANSITIONS.getOrDefault(from, EnumSet.noneOf(OrderStatus.class)).contains(to);
     }
 
     private List<OrderItem> mapItems(Order order, List<OrderItemRequest> itemRequests) {
