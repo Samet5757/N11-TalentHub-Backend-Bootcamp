@@ -9,6 +9,8 @@ import com.ecommerce.payment.repository.PaymentRepository;
 import com.iyzipay.Options;
 import com.iyzipay.model.*;
 import com.iyzipay.request.CreatePaymentRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,6 +21,7 @@ import java.util.UUID;
 
 @Service
 public class PaymentService {
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository paymentRepository;
     private final OrderClient orderClient;
@@ -35,9 +38,11 @@ public class PaymentService {
     }
 
     public PaymentIntentResponse createPaymentIntent(PaymentIntentRequest request, String idempotencyKey) {
+        log.info("Creating payment intent for orderId={}", request == null ? null : request.orderId());
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Payment existing = paymentRepository.findByIdempotencyKey(idempotencyKey).orElse(null);
             if (existing != null) {
+                log.info("Returning existing payment intent for idempotencyKey={}", idempotencyKey);
                 return new PaymentIntentResponse(existing.getPaymentIntentId(), existing.getOrderId(), existing.getAmount(), existing.getPaymentStatus());
             }
         }
@@ -59,6 +64,7 @@ public class PaymentService {
     }
 
     public PaymentResponse confirmPaymentIntent(String paymentIntentId, PaymentConfirmRequest request, String idempotencyKey) {
+        log.info("Confirming payment intent id={}", paymentIntentId);
         if (paymentIntentId == null || paymentIntentId.isBlank()) {
             throw new IllegalArgumentException("paymentIntentId is required");
         }
@@ -91,6 +97,7 @@ public class PaymentService {
     }
 
     public PaymentResponse processPayment(PaymentRequest request, String idempotencyKey) {
+        log.info("Processing payment for orderId={}", request == null ? null : request.orderId());
         validateRequest(request);
 
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
@@ -132,7 +139,10 @@ public class PaymentService {
         Payment saved = paymentRepository.save(payment);
 
         if (success) {
+            log.info("Payment successful for orderId={}, updating order status", saved.getOrderId());
             orderClient.updateOrderStatus(saved.getOrderId(), "PAYMENT_AUTHORIZED");
+        } else {
+            log.warn("Payment failed for orderId={}", saved.getOrderId());
         }
 
         return toResponse(saved);

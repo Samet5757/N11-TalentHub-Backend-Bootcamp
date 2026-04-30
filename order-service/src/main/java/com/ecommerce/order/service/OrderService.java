@@ -10,6 +10,8 @@ import com.ecommerce.order.entity.OrderStatus;
 import com.ecommerce.order.exception.OrderNotFoundException;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.saga.OrderSagaPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ import java.util.List;
 
 @Service
 public class OrderService {
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final OrderSagaPublisher orderSagaPublisher;
@@ -34,6 +37,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByCustomerId(Long customerId) {
+        log.debug("Listing orders for customerId={}", customerId);
         return orderRepository.findByCustomerIdOrderByCreatedAtDescIdDesc(customerId).stream().map(this::toResponse).toList();
     }
 
@@ -46,6 +50,8 @@ public class OrderService {
 
     public OrderResponse createOrder(OrderRequest request) {
         validateCreateRequest(request);
+        log.info("Creating order for customerId={}, sellerId={}, itemCount={}",
+                request.customerId(), request.sellerId(), request.items() == null ? 0 : request.items().size());
 
         double totalAmount = request.totalAmount();
         double discountAmount = request.discountAmount() == null ? 0.0 : request.discountAmount();
@@ -66,6 +72,7 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
         orderSagaPublisher.publishOrderCreated(saved);
+        log.info("Order created id={}, finalAmount={}, status={}", saved.getId(), saved.getFinalAmount(), saved.getStatus());
         return toResponse(saved);
     }
 
@@ -81,6 +88,7 @@ public class OrderService {
         }
 
         order.setStatus(targetStatus);
+        log.info("Updating order status id={} -> {}", id, targetStatus);
         return toResponse(orderRepository.save(order));
     }
 

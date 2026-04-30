@@ -24,6 +24,18 @@ public class FeignConfig {
             if (authorizationHeader != null && !authorizationHeader.isBlank()) {
                 requestTemplate.header("Authorization", authorizationHeader);
             }
+
+            String userIdHeader = currentRequest.getHeader("X-User-Id");
+            if (userIdHeader != null && !userIdHeader.isBlank()) {
+                requestTemplate.header("X-User-Id", userIdHeader);
+            }
+
+            String userRoleHeader = currentRequest.getHeader("X-User-Role");
+            if (userRoleHeader != null && !userRoleHeader.isBlank()) {
+                requestTemplate.header("X-User-Role", userRoleHeader);
+            }
+
+            requestTemplate.header("X-Internal-Service", "payment-service");
         };
     }
 }

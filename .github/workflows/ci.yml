@@ -28,6 +28,9 @@ jobs:
       - name: Critical service unit tests
         run: mvn -B -ntp -pl cart-service,order-service,payment-service -am test
 
+      - name: Order service integration test
+        run: mvn -B -ntp -pl order-service -am -Dtest=OrderControllerIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test
+
       - name: Validate docker compose syntax
         run: docker compose -f docker/docker-compose.yml config >/tmp/compose-check.yml
 
@@ -53,3 +56,29 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  notify-slack:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [build-and-test, frontend-build]
+
+    steps:
+      - name: Notify Slack (success)
+        if: ${{ needs.build-and-test.result == 'success' && needs.frontend-build.result == 'success' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: good
+          SLACK_TITLE: "CI Success"
+          SLACK_MESSAGE: "Workflow '${{ github.workflow }}' succeeded for `${{ github.repository }}` on `${{ github.ref_name }}`. Commit: `${{ github.sha }}`"
+          MSG_MINIMAL: true
+
+      - name: Notify Slack (failure)
+        if: ${{ needs.build-and-test.result != 'success' || needs.frontend-build.result != 'success' }}
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: danger
+          SLACK_TITLE: "CI Failure"
+          SLACK_MESSAGE: "Workflow '${{ github.workflow }}' failed for `${{ github.repository }}` on `${{ github.ref_name }}`. Commit: `${{ github.sha }}`"
+          MSG_MINIMAL: true

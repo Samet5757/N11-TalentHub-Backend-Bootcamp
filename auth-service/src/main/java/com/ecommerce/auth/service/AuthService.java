@@ -7,6 +7,8 @@ import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AuthService {
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final Set<String> revokedTokens = ConcurrentHashMap.newKeySet();
@@ -34,6 +37,7 @@ public class AuthService {
     }
 
     public User register(User user) {
+        log.info("Registering user username={}", user == null ? null : user.getUsername());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
@@ -41,8 +45,10 @@ public class AuthService {
     public String login(String username, String password) {
         User user = userRepository.findByUsername(username);
         if (user != null && passwordEncoder.matches(password, user.getPassword())) {
+            log.info("Login successful for username={}", username);
             return generateToken(user);
         }
+        log.warn("Login failed for username={}", username);
         return null;
     }
 
@@ -66,6 +72,7 @@ public class AuthService {
     }
 
     public void logout(String bearerToken) {
+        log.info("Logging out token");
         revokedTokens.add(extractToken(bearerToken));
     }
 

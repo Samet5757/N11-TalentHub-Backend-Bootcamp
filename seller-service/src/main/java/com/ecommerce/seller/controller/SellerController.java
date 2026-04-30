@@ -3,6 +3,7 @@ package com.ecommerce.seller.controller;
 import com.ecommerce.seller.dto.SellerRequest;
 import com.ecommerce.seller.dto.SellerResponse;
 import com.ecommerce.seller.service.SellerService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -33,7 +34,7 @@ public class SellerController {
     }
 
     @PostMapping
-    public ResponseEntity<SellerResponse> createSeller(@RequestBody SellerRequest request) {
+    public ResponseEntity<SellerResponse> createSeller(@Valid @RequestBody SellerRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(sellerService.createSeller(request));
     }
 

@@ -7,12 +7,15 @@ import com.ecommerce.cart.entity.CartItem;
 import com.ecommerce.cart.exception.CartNotFoundException;
 import com.ecommerce.cart.exception.CouponValidationException;
 import com.ecommerce.cart.repository.CartRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class CartService {
+    private static final Logger log = LoggerFactory.getLogger(CartService.class);
     private final CartRepository cartRepository;
     private final CampaignClient campaignClient;
 
@@ -41,12 +44,14 @@ public class CartService {
         cart.setCustomerId(request.customerId());
         cart.setTotalAmount(request.totalAmount());
         cart.setDiscountAmount(0.0);
+        log.info("Creating cart for customerId={}", request.customerId());
         return toResponse(cartRepository.save(cart));
     }
 
     public CartResponse addItem(Long cartId, CartItemRequest request) {
         validateItemRequest(request);
         Cart cart = findCart(cartId);
+        log.info("Adding item to cartId={}, productId={}, quantity={}", cartId, request.productId(), request.quantity());
 
         CartItem item = new CartItem();
         item.setCart(cart);
@@ -93,6 +98,7 @@ public class CartService {
 
         Cart cart = findCart(cartId);
         CampaignValidationResponse campaign = campaignClient.validateCampaign(code.trim());
+        log.info("Applying coupon to cartId={}, code={}", cartId, code);
 
         double discountAmount = calculateDiscount(cart.getTotalAmount(), campaign);
         cart.setCouponCode(campaign.code());
@@ -103,6 +109,7 @@ public class CartService {
 
     public CartResponse removeCoupon(Long cartId) {
         Cart cart = findCart(cartId);
+        log.info("Removing coupon from cartId={}", cartId);
         cart.setCouponCode(null);
         cart.setDiscountAmount(0.0);
         return toResponse(cartRepository.save(cart));

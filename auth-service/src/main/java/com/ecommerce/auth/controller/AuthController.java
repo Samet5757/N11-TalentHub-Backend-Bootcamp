@@ -1,12 +1,14 @@
 package com.ecommerce.auth.controller;
 
+import com.ecommerce.auth.dto.AuthLoginRequest;
+import com.ecommerce.auth.dto.AuthRegisterRequest;
+import com.ecommerce.auth.dto.AuthTokenResponse;
+import com.ecommerce.auth.dto.AuthUserResponse;
 import com.ecommerce.auth.entity.User;
 import com.ecommerce.auth.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -18,39 +20,39 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody User user) {
-        User created = authService.register(user);
-        return ResponseEntity.ok(created);
+    public ResponseEntity<AuthUserResponse> register(@Valid @RequestBody AuthRegisterRequest request) {
+        User toCreate = new User(request.username(), request.password(), request.role());
+        User created = authService.register(toCreate);
+        return ResponseEntity.ok(toUserResponse(created));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> credentials) {
-        String username = credentials.get("username");
-        String password = credentials.get("password");
-        String token = authService.login(username, password);
-        Map<String, String> response = new HashMap<>();
+    public ResponseEntity<AuthTokenResponse> login(@Valid @RequestBody AuthLoginRequest request) {
+        String token = authService.login(request.username(), request.password());
         if (token != null) {
-            response.put("token", token);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(new AuthTokenResponse(token));
         }
-        response.put("error", "Invalid credentials");
-        return ResponseEntity.status(401).body(response);
+        return ResponseEntity.status(401).build();
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> me(@RequestHeader("Authorization") String authorization) {
-        return ResponseEntity.ok(authService.getCurrentUser(authorization));
+    public ResponseEntity<AuthUserResponse> me(@RequestHeader("Authorization") String authorization) {
+        return ResponseEntity.ok(toUserResponse(authService.getCurrentUser(authorization)));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<Map<String, String>> refresh(@RequestHeader("Authorization") String authorization) {
+    public ResponseEntity<AuthTokenResponse> refresh(@RequestHeader("Authorization") String authorization) {
         String newToken = authService.refresh(authorization);
-        return ResponseEntity.ok(Map.of("token", newToken));
+        return ResponseEntity.ok(new AuthTokenResponse(newToken));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorization) {
         authService.logout(authorization);
         return ResponseEntity.noContent().build();
+    }
+
+    private AuthUserResponse toUserResponse(User user) {
+        return new AuthUserResponse(user.getId(), user.getUsername(), user.getRole());
     }
 }
