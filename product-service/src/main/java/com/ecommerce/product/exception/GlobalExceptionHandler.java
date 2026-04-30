@@ -24,6 +24,13 @@ public class GlobalExceptionHandler {
         return buildError(HttpStatus.NOT_FOUND, exception.getMessage(), request.getRequestURI());
     }
 
+    @ExceptionHandler(OutOfStockException.class)
+    public ResponseEntity<ApiError> handleOutOfStock(OutOfStockException exception,
+                                                      HttpServletRequest request) {
+        log.warn("Out of stock on {}: {}", request.getRequestURI(), exception.getMessage());
+        return buildError(HttpStatus.CONFLICT, exception.getMessage(), request.getRequestURI());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException exception,
                                                            HttpServletRequest request) {

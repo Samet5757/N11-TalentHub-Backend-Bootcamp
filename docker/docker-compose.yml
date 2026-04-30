@@ -18,6 +18,12 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
   auth-db:
     image: postgres:15
     container_name: auth-db
@@ -128,6 +134,7 @@ services:
       - discovery-server
       - product-db
       - kafka
+      - redis
     environment:
       SPRING_PROFILES_ACTIVE: dev
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-server:8761/eureka/
@@ -135,6 +142,8 @@ services:
       DB_USERNAME: user
       DB_PASSWORD: password
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_CACHE_TYPE: redis
+      SPRING_DATA_REDIS_HOST: redis
     ports:
       - "8081:8081"
 
@@ -176,6 +185,9 @@ services:
       DB_USERNAME: user
       DB_PASSWORD: password
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MAIL_HOST: localhost
+      MAIL_PORT: 1025
+      ORDER_MAIL_ENABLED: "false"
     ports:
       - "8083:8083"
 

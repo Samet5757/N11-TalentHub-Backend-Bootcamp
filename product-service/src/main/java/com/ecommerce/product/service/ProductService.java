@@ -3,10 +3,13 @@ package com.ecommerce.product.service;
 import com.ecommerce.product.dto.ProductRequest;
 import com.ecommerce.product.dto.ProductResponse;
 import com.ecommerce.product.entity.Product;
+import com.ecommerce.product.exception.OutOfStockException;
 import com.ecommerce.product.exception.ProductNotFoundException;
 import com.ecommerce.product.mapper.ProductMapper;
 import com.ecommerce.product.repository.ProductRepository;
 import com.ecommerce.product.repository.ProductSpecifications;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +29,7 @@ public class ProductService {
         this.productMapper = productMapper;
     }
 
+    @Cacheable(value = "products")
     public Page<ProductResponse> listProducts(String search, Long categoryId, Long sellerId, Boolean active,
                                               int page, int size, String sortBy, String sortDir) {
         validatePageRequest(page, size);
@@ -42,6 +46,7 @@ public class ProductService {
     }
 
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public ProductResponse updateStock(Long productId, Integer newStock) {
         validateStock(newStock);
         Product product = findProduct(productId);
@@ -49,6 +54,22 @@ public class ProductService {
         return productMapper.toResponse(productRepository.save(product));
     }
 
+    @Transactional
+    @CacheEvict(value = "products", allEntries = true)
+    public void reserveStock(Long productId, Integer quantity) {
+        if (productId == null || productId <= 0) {
+            throw new IllegalArgumentException("productId must be greater than zero");
+        }
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("quantity must be greater than zero");
+        }
+        int updatedRows = productRepository.decrementStockAtomically(productId, quantity);
+        if (updatedRows == 0) {
+            throw new OutOfStockException(productId, quantity);
+        }
+    }
+
+    @CacheEvict(value = "products", allEntries = true)
     public ProductResponse createProduct(ProductRequest request) {
         validateProductRequest(request);
         Product product = productMapper.toEntity(request);
@@ -56,6 +77,7 @@ public class ProductService {
         return productMapper.toResponse(productRepository.save(product));
     }
 
+    @CacheEvict(value = "products", allEntries = true)
     public ProductResponse updateProduct(Long productId, ProductRequest request) {
         validateProductRequest(request);
         Product product = findProduct(productId);
@@ -63,6 +85,7 @@ public class ProductService {
         return productMapper.toResponse(productRepository.save(product));
     }
 
+    @CacheEvict(value = "products", allEntries = true)
     public void deleteProduct(Long productId) {
         Product product = findProduct(productId);
         productRepository.delete(product);
