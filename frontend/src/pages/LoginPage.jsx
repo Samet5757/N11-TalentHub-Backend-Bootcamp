@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setToken } from '../lib/auth';
 
@@ -40,6 +40,7 @@ export default function LoginPage({ setUser, onLoggedIn }) {
         </label>
         {error && <div className="error">{error}</div>}
         <button className="btn primary" type="submit">Giris Yap</button>
+        <div className="meta">Hesabiniz yok mu? <Link to="/register" className="link-inline">Kayit Ol</Link></div>
       </form>
     </div>
   );

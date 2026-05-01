@@ -39,9 +39,11 @@ export function getUserContext() {
   const token = getToken();
   const payload = parseJwt(token);
   if (!payload) return null;
+  const role = payload.role || (payload.roleCode === 'ROLE_ADMIN' ? 'ADMIN' : 'CUSTOMER');
   return {
     userId: Number(payload.userId ?? payload.sub),
-    role: payload.role,
+    role,
+    roleCode: payload.roleCode || (role === 'ADMIN' ? 'ROLE_ADMIN' : 'ROLE_USER'),
     username: payload.sub
   };
 }

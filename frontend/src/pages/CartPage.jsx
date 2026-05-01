@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty, onApplyCoupon, onRemoveCoupon, onCheckout, isCheckingOut, checkoutState, productIds = [], fetchProductById }) {
   const [coupon, setCoupon] = useState('');
@@ -18,6 +19,9 @@ export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty
     && isExpiryValid
     && (cleanedCvv.length === 3 || cleanedCvv.length === 4);
   const hasCoupon = !!cart.couponCode;
+  const checkoutError = checkoutState.error?.toLowerCase().includes('stok')
+    ? 'Stok yetersiz. Bazi urunlerin adedini dusurup tekrar deneyin.'
+    : checkoutState.error;
 
   const tl = (value) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(value ?? 0);
 
@@ -67,7 +71,12 @@ export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty
               <button className="btn" onClick={() => onRemoveItem(item.id)}>Sil</button>
             </div>
           </div>
-        )) : <div className="meta">Sepet bos.</div>}
+        )) : (
+          <div className="empty-block">
+            <div className="meta">Sepetiniz su an bos.</div>
+            <Link className="btn primary" to="/">Alisverise Basla</Link>
+          </div>
+        )}
 
         <hr />
         <div className="space"><span>Toplam</span><strong>{tl(cart.totalAmount)}</strong></div>
@@ -102,7 +111,7 @@ export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty
           </label>
         </div>
         <div className="meta">Kart no min 12 hane, son kullanma MM/YY, CVV 3-4 hane olmalidir.</div>
-        {checkoutState.error && <div className="error">{checkoutState.error}</div>}
+        {checkoutError && <div className="error">{checkoutError}</div>}
         {checkoutState.ok && <div className="ok">{checkoutState.ok}</div>}
         <button className="btn accent" onClick={() => onCheckout({
           cardHolderName: cardHolderName.trim(),

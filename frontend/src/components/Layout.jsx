@@ -22,10 +22,26 @@ export default function Layout({ user, children, setUser, cartItemCount = 0 }) {
             <div className="brand-sub">Kurumsal E-Ticaret Deneyimi</div>
           </div>
           <div className="actions">
-            <Link className="btn" to="/">Ana Sayfa</Link>
-            <Link className="btn" to="/cart">Sepet{cartItemCount > 0 ? ` (${cartItemCount})` : ''}</Link>
-            <Link className="btn" to="/orders">Siparisler</Link>
-            {user ? <button className="btn accent" onClick={handleLogout}>Cikis</button> : <Link className="btn primary" to="/login">Login</Link>}
+            {user?.role === 'ADMIN' ? (
+              <>
+                <Link className="btn" to="/admin">Dashboard</Link>
+                <Link className="btn primary" to="/admin">Admin Paneli</Link>
+              </>
+            ) : (
+              <>
+                <Link className="btn" to="/">Ana Sayfa</Link>
+                <Link className="btn" to="/cart">Sepet{cartItemCount > 0 ? ` (${cartItemCount})` : ''}</Link>
+                <Link className="btn" to="/orders">Siparisler</Link>
+              </>
+            )}
+            {user ? (
+              <button className="btn accent" onClick={handleLogout}>Cikis</button>
+            ) : (
+              <>
+                <Link className="btn" to="/register">Kayit Ol</Link>
+                <Link className="btn primary" to="/login">Login</Link>
+              </>
+            )}
           </div>
         </div>
       </header>

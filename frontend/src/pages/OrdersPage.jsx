@@ -26,6 +26,16 @@ export default function OrdersPage({ user }) {
       .finally(() => setLoading(false));
   }, [customerId]);
 
+  useEffect(() => {
+    if (!customerId) return;
+    const timer = setInterval(() => {
+      api.ordersByCustomer(customerId)
+        .then((data) => setOrders(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [customerId]);
+
   const visibleOrders = useMemo(() => {
     const quickFiltered = quickFilter === 'ALL'
       ? orders
@@ -74,6 +84,25 @@ export default function OrdersPage({ user }) {
     return 'Islemde';
   }
 
+  function timelineItems(status) {
+    const flow = ['PENDING', 'INVENTORY_RESERVED', 'PAYMENT_PENDING', 'PAYMENT_AUTHORIZED', 'APPROVED', 'SHIPPED', 'DELIVERED', 'COMPLETED'];
+    if (['FAILED', 'CANCELLED'].includes(status)) {
+      return [
+        { label: 'Siparis Alindi', done: true },
+        { label: 'Stok/Odeme Kontrolu', done: false },
+        { label: 'Siparis Sonlandirildi', done: true, failed: true }
+      ];
+    }
+    const index = Math.max(0, flow.indexOf(status));
+    return [
+      { label: 'Siparis Alindi', done: index >= 0 },
+      { label: 'Stok Ayrildi', done: index >= 1 },
+      { label: 'Odeme Tamamlandi', done: index >= 3 },
+      { label: 'Kargo/Teslimat', done: index >= 5 },
+      { label: 'Tamamlandi', done: index >= 7 }
+    ];
+  }
+
   const tl = (value) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(value ?? 0);
   const canCancel = (status) => ['PENDING', 'INVENTORY_RESERVED', 'PAYMENT_PENDING', 'PAYMENT_AUTHORIZED', 'APPROVED'].includes(status);
 
@@ -114,8 +143,18 @@ export default function OrdersPage({ user }) {
             </div>
             <div className="meta">{o.items?.length || 0} urun | Toplam: {tl(o.finalAmount)}</div>
             <div className="meta">Durum Akisi: {statusStage(o.status)}</div>
+            <div className="order-timeline">
+              {timelineItems(o.status).map((step) => (
+                <span key={`${o.id}-${step.label}`} className={`timeline-step ${step.done ? 'done' : ''} ${step.failed ? 'failed' : ''}`}>
+                  {step.label}
+                </span>
+              ))}
+            </div>
             {o.status === 'COMPLETED' && (
               <div className="meta">Bilgi: Siparis onay/fatura e-postasi sistem tarafinda otomatik gonderilir.</div>
+            )}
+            {['FAILED', 'CANCELLED'].includes(o.status) && (
+              <div className="error">Islem tamamlanamadi. Olasi nedenler: stok tukenmesi, odeme reddi veya manuel iptal.</div>
             )}
             <div style={{ marginTop: 10 }}>
               <button className="btn" onClick={() => setSelectedOrderId(selectedOrderId === o.id ? null : o.id)}>

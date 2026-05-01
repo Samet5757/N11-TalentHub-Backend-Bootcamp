@@ -36,11 +36,16 @@ function toQuery(params = {}) {
 
 export const api = {
   login: (username, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request('/auth/me'),
   refresh: () => request('/auth/refresh', { method: 'POST' }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   products: (params) => request(`/products?${toQuery(params)}`),
   product: (id) => request(`/products/${id}`),
+  createProduct: (payload) => request('/products', { method: 'POST', body: JSON.stringify(payload) }),
+  updateProduct: (id, payload) => request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  updateProductStock: (id, stock) => request(`/products/${id}/stock?stock=${encodeURIComponent(stock)}`, { method: 'PUT' }),
+  deleteProduct: (id) => request(`/products/${id}`, { method: 'DELETE' }),
   cartsByCustomer: (customerId) => request(`/carts/customer/${customerId}`),
   createCart: (customerId) => request('/carts', { method: 'POST', body: JSON.stringify({ customerId, totalAmount: 0 }) }),
   addItem: (cartId, payload) => request(`/carts/${cartId}/items`, { method: 'POST', body: JSON.stringify(payload) }),
