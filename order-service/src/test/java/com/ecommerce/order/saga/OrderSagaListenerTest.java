@@ -1,8 +1,10 @@
 package com.ecommerce.order.saga;
 
 import com.ecommerce.common.event.InventoryFailedEvent;
+import com.ecommerce.common.event.PaymentAuthorizedEvent;
 import com.ecommerce.common.event.PaymentFailedEvent;
 import com.ecommerce.order.messaging.EventDedupService;
+import com.ecommerce.order.notification.OrderNotificationOutboxService;
 import com.ecommerce.order.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +27,8 @@ class OrderSagaListenerTest {
 
     @Mock
     private EventDedupService eventDedupService;
+    @Mock
+    private OrderNotificationOutboxService orderNotificationOutboxService;
 
     @InjectMocks
     private OrderSagaListener orderSagaListener;
@@ -76,5 +80,23 @@ class OrderSagaListenerTest {
         ));
 
         verify(orderService, never()).updateOrderStatus(303L, "FAILED");
+    }
+
+    @Test
+    void onPaymentAuthorized_shouldEnqueueNotification() {
+        UUID eventId = UUID.randomUUID();
+        when(eventDedupService.alreadyProcessed("order-orchestrator", eventId)).thenReturn(false);
+
+        orderSagaListener.onPaymentAuthorized(new PaymentAuthorizedEvent(
+                eventId,
+                "corr-4",
+                LocalDateTime.now(),
+                404L,
+                9001L
+        ));
+
+        verify(orderService).updateOrderStatus(404L, "PAYMENT_AUTHORIZED");
+        verify(orderService).updateOrderStatus(404L, "COMPLETED");
+        verify(orderService).getOrderEntityById(404L);
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 
@@ -43,6 +44,15 @@ public class GlobalExceptionHandler {
                 .orElse("Validation failed");
         log.warn("Auth constraint violation on {}: {}", request.getRequestURI(), message);
         return buildError(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException exception,
+                                                         HttpServletRequest request) {
+        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+        String message = exception.getReason() == null ? status.getReasonPhrase() : exception.getReason();
+        log.warn("Auth response-status error on {}: {}", request.getRequestURI(), message);
+        return buildError(status, message, request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)

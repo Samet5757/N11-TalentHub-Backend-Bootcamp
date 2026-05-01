@@ -5,7 +5,7 @@ import com.ecommerce.order.dto.OrderRequest;
 import com.ecommerce.order.dto.OrderResponse;
 import com.ecommerce.order.entity.Order;
 import com.ecommerce.order.entity.OrderStatus;
-import com.ecommerce.order.notification.OrderEmailNotificationService;
+import com.ecommerce.order.notification.OrderNotificationOutboxService;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.saga.OrderSagaPublisher;
 import org.junit.jupiter.api.Test;
@@ -32,9 +32,8 @@ class OrderServiceTest {
 
     @Mock
     private OrderSagaPublisher orderSagaPublisher;
-
     @Mock
-    private OrderEmailNotificationService orderEmailNotificationService;
+    private OrderNotificationOutboxService orderNotificationOutboxService;
 
     @InjectMocks
     private OrderService orderService;
@@ -109,7 +108,7 @@ class OrderServiceTest {
     }
 
     @Test
-    void updateOrderStatus_shouldSendMailWhenCompleted() {
+    void updateOrderStatus_shouldMoveToCompleted() {
         Order order = new Order();
         order.setId(7L);
         order.setCustomerId(2L);
@@ -122,6 +121,7 @@ class OrderServiceTest {
         OrderResponse response = orderService.updateOrderStatus(7L, "COMPLETED");
 
         assertThat(response.status()).isEqualTo(OrderStatus.COMPLETED);
-        verify(orderEmailNotificationService).sendOrderCompletedMail(order);
+        verify(orderRepository).save(order);
+        verify(orderNotificationOutboxService).enqueueCompletedOrderMail(order);
     }
 }

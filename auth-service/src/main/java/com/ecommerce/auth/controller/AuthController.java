@@ -1,10 +1,12 @@
 package com.ecommerce.auth.controller;
 
 import com.ecommerce.auth.dto.AuthLoginRequest;
-import com.ecommerce.auth.dto.AuthRegisterRequest;
 import com.ecommerce.auth.dto.AuthTokenResponse;
 import com.ecommerce.auth.dto.AuthUserResponse;
+import com.ecommerce.auth.dto.RegisterRequest;
+import com.ecommerce.auth.dto.UserContactResponse;
 import com.ecommerce.auth.entity.User;
+import com.ecommerce.auth.entity.UserRole;
 import com.ecommerce.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -20,8 +22,14 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthUserResponse> register(@Valid @RequestBody AuthRegisterRequest request) {
-        User toCreate = new User(request.username(), request.password(), request.role());
+    public ResponseEntity<AuthUserResponse> register(@Valid @RequestBody RegisterRequest request) {
+        User toCreate = new User();
+        toCreate.setUsername(request.email());
+        toCreate.setPassword(request.password());
+        toCreate.setEmail(request.email());
+        toCreate.setFirstName(request.firstName());
+        toCreate.setLastName(request.lastName());
+        toCreate.setRole(UserRole.CUSTOMER);
         User created = authService.register(toCreate);
         return ResponseEntity.ok(toUserResponse(created));
     }
@@ -50,6 +58,12 @@ public class AuthController {
     public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorization) {
         authService.logout(authorization);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/internal/users/{id}/contact")
+    public ResponseEntity<UserContactResponse> userContact(@PathVariable Long id) {
+        User user = authService.getUserById(id);
+        return ResponseEntity.ok(new UserContactResponse(user.getId(), user.getEmail()));
     }
 
     private AuthUserResponse toUserResponse(User user) {

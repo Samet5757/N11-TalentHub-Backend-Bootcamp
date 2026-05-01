@@ -55,24 +55,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_processed_event
 CREATE INDEX IF NOT EXISTS idx_outbox_status_next_attempt
     ON outbox_messages (status, next_attempt_at, created_at);
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'payments_payment_status_check'
-    ) THEN
-        ALTER TABLE payments
-            ADD CONSTRAINT payments_payment_status_check
-            CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED'));
-    END IF;
-END $$;
+ALTER TABLE payments
+    DROP CONSTRAINT IF EXISTS payments_payment_status_check;
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'outbox_messages_status_check'
-    ) THEN
-        ALTER TABLE outbox_messages
-            ADD CONSTRAINT outbox_messages_status_check
-            CHECK (status IN ('PENDING', 'PUBLISHED', 'FAILED'));
-    END IF;
-END $$;
+ALTER TABLE payments
+    ADD CONSTRAINT payments_payment_status_check
+    CHECK (payment_status IN ('PENDING', 'SUCCESS', 'FAILED'));
+
+ALTER TABLE outbox_messages
+    DROP CONSTRAINT IF EXISTS outbox_messages_status_check;
+
+ALTER TABLE outbox_messages
+    ADD CONSTRAINT outbox_messages_status_check
+    CHECK (status IN ('PENDING', 'PUBLISHED', 'FAILED'));

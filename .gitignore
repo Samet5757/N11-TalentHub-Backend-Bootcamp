@@ -32,3 +32,5 @@ nbdist/
 .mvn
 .mvn/*
 .DS_Store
+frontend/node_modules/
+frontend/package-lock.json

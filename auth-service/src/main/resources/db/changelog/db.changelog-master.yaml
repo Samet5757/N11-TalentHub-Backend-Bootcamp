@@ -1,3 +1,7 @@
 databaseChangeLog:
   - include:
       file: db/changelog/data/db.changelog-001-auth-seed.sql
+  - include:
+      file: db/changelog/data/db.changelog-002-user-email.sql
+  - include:
+      file: db/changelog/data/db.changelog-003-user-name-fields.sql

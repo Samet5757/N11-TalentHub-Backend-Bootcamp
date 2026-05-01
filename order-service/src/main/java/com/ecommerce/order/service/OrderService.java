@@ -8,7 +8,7 @@ import com.ecommerce.order.entity.Order;
 import com.ecommerce.order.entity.OrderItem;
 import com.ecommerce.order.entity.OrderStatus;
 import com.ecommerce.order.exception.OrderNotFoundException;
-import com.ecommerce.order.notification.OrderEmailNotificationService;
+import com.ecommerce.order.notification.OrderNotificationOutboxService;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.saga.OrderSagaPublisher;
 import org.slf4j.Logger;
@@ -47,14 +47,14 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderSagaPublisher orderSagaPublisher;
-    private final OrderEmailNotificationService orderEmailNotificationService;
+    private final OrderNotificationOutboxService orderNotificationOutboxService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderSagaPublisher orderSagaPublisher,
-                        OrderEmailNotificationService orderEmailNotificationService) {
+                        OrderNotificationOutboxService orderNotificationOutboxService) {
         this.orderRepository = orderRepository;
         this.orderSagaPublisher = orderSagaPublisher;
-        this.orderEmailNotificationService = orderEmailNotificationService;
+        this.orderNotificationOutboxService = orderNotificationOutboxService;
     }
 
     @Transactional(readOnly = true)
@@ -127,9 +127,15 @@ public class OrderService {
         log.info("Updating order status id={} -> {}", id, targetStatus);
         Order updatedOrder = orderRepository.save(order);
         if (targetStatus == OrderStatus.COMPLETED) {
-            orderEmailNotificationService.sendOrderCompletedMail(updatedOrder);
+            orderNotificationOutboxService.enqueueCompletedOrderMail(updatedOrder);
         }
         return toResponse(updatedOrder);
+    }
+
+    @Transactional(readOnly = true)
+    public Order getOrderEntityById(Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
     public OrderResponse cancelOrderByCustomer(Long id, Long customerId) {

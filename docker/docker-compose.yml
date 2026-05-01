@@ -185,9 +185,13 @@ services:
       DB_USERNAME: user
       DB_PASSWORD: password
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      MAIL_HOST: localhost
-      MAIL_PORT: 1025
-      ORDER_MAIL_ENABLED: "false"
+      MAIL_HOST: sandbox.smtp.mailtrap.io
+      MAIL_PORT: 2525
+      MAIL_USERNAME: 5e7d1f8701fb02
+      MAIL_PASSWORD: af4c1624d1cbd6
+      MAIL_SMTP_AUTH: "true"
+      MAIL_SMTP_STARTTLS: "true"
+      ORDER_MAIL_ENABLED: "true"
     ports:
       - "8083:8083"
 

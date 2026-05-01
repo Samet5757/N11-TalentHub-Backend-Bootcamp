@@ -124,7 +124,7 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<Object
         boolean customer = "CUSTOMER".equals(normalizedRole);
 
         if (path.startsWith("/products")) {
-            return method == HttpMethod.GET || privileged;
+            return method == HttpMethod.GET || "ADMIN".equals(normalizedRole);
         }
 
         if (path.startsWith("/sellers")) {

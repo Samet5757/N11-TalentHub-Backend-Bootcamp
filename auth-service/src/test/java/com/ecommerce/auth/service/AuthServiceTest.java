@@ -30,7 +30,7 @@ class AuthServiceTest {
 
     @Test
     void register_shouldHashPasswordBeforePersist() {
-        User request = new User("customer-x", "pass123", UserRole.CUSTOMER);
+        User request = new User("customer-x", "pass123", "customer-x@example.local", UserRole.CUSTOMER);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         User saved = authService.register(request);
@@ -41,9 +41,9 @@ class AuthServiceTest {
 
     @Test
     void login_shouldUsePasswordEncoderMatches() {
-        User dbUser = new User("customer-y", passwordEncoder.encode("pass123"), UserRole.CUSTOMER);
+        User dbUser = new User("customer-y", passwordEncoder.encode("pass123"), "customer-y@example.local", UserRole.CUSTOMER);
         dbUser.setId(10L);
-        when(userRepository.findByUsername("customer-y")).thenReturn(dbUser);
+        when(userRepository.findByUsernameOrEmail("customer-y", "customer-y")).thenReturn(dbUser);
 
         String okToken = authService.login("customer-y", "pass123");
         String failToken = authService.login("customer-y", "wrong");

@@ -1,6 +1,7 @@
 package com.ecommerce.auth.dto;
 
 import com.ecommerce.auth.entity.UserRole;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -12,6 +13,8 @@ public record AuthRegisterRequest(
         @NotBlank(message = "password is required")
         @Size(min = 6, max = 100, message = "password must be between 6 and 100 characters")
         String password,
+        @Email(message = "email must be valid")
+        String email,
         @NotNull(message = "role is required")
         UserRole role
 ) {

@@ -1,6 +1,7 @@
 package com.ecommerce.auth.service;
 
 import com.ecommerce.auth.entity.User;
+import com.ecommerce.auth.entity.UserRole;
 import com.ecommerce.auth.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -12,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -38,12 +41,21 @@ public class AuthService {
 
     public User register(User user) {
         log.info("Registering user username={}", user == null ? null : user.getUsername());
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "email is required");
+        }
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+        }
+        if (user.getRole() == null) {
+            user.setRole(UserRole.CUSTOMER);
+        }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
     public String login(String username, String password) {
-        User user = userRepository.findByUsername(username);
+        User user = userRepository.findByUsernameOrEmail(username, username);
         if (user != null && passwordEncoder.matches(password, user.getPassword())) {
             log.info("Login successful for username={}", username);
             return generateToken(user);
@@ -55,8 +67,7 @@ public class AuthService {
     public User getCurrentUser(String bearerToken) {
         Claims claims = parseClaims(extractToken(bearerToken));
         Long userId = Long.parseLong(claims.get("userId").toString());
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return getUserById(userId);
     }
 
     public String refresh(String bearerToken) {
@@ -66,9 +77,13 @@ public class AuthService {
         }
         Claims claims = parseClaims(token);
         Long userId = Long.parseLong(claims.get("userId").toString());
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = getUserById(userId);
         return generateToken(user);
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
     public void logout(String bearerToken) {
@@ -85,10 +100,18 @@ public class AuthService {
                 .setSubject(String.valueOf(user.getId()))
                 .claim("userId", user.getId())
                 .claim("role", user.getRole().name())
+                .claim("roleCode", toRoleCode(user))
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    private String toRoleCode(User user) {
+        if (user != null && user.getRole() != null && user.getRole().name().equals("ADMIN")) {
+            return "ROLE_ADMIN";
+        }
+        return "ROLE_USER";
     }
 
     private Claims parseClaims(String token) {

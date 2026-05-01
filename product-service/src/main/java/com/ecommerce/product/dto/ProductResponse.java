@@ -1,6 +1,7 @@
 package com.ecommerce.product.dto;
 
 import java.math.BigDecimal;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 public record ProductResponse(
@@ -19,5 +20,5 @@ public record ProductResponse(
         String badgeType,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
-) {
+) implements Serializable {
 }

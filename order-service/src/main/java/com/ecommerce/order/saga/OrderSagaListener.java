@@ -6,6 +6,7 @@ import com.ecommerce.common.event.KafkaTopics;
 import com.ecommerce.common.event.PaymentAuthorizedEvent;
 import com.ecommerce.common.event.PaymentFailedEvent;
 import com.ecommerce.order.messaging.EventDedupService;
+import com.ecommerce.order.notification.OrderNotificationOutboxService;
 import com.ecommerce.order.service.OrderService;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
@@ -21,10 +22,14 @@ public class OrderSagaListener {
 
     private final OrderService orderService;
     private final EventDedupService eventDedupService;
+    private final OrderNotificationOutboxService orderNotificationOutboxService;
 
-    public OrderSagaListener(OrderService orderService, EventDedupService eventDedupService) {
+    public OrderSagaListener(OrderService orderService,
+                             EventDedupService eventDedupService,
+                             OrderNotificationOutboxService orderNotificationOutboxService) {
         this.orderService = orderService;
         this.eventDedupService = eventDedupService;
+        this.orderNotificationOutboxService = orderNotificationOutboxService;
     }
 
     @RetryableTopic(attempts = "3", backoff = @Backoff(delay = 2000, multiplier = 2.0), dltTopicSuffix = ".dlq", autoCreateTopics = "true")
@@ -55,6 +60,7 @@ public class OrderSagaListener {
         }
         orderService.updateOrderStatus(event.orderId(), "PAYMENT_AUTHORIZED");
         orderService.updateOrderStatus(event.orderId(), "COMPLETED");
+        orderNotificationOutboxService.enqueueCompletedOrderMail(orderService.getOrderEntityById(event.orderId()));
     }
 
     @RetryableTopic(attempts = "3", backoff = @Backoff(delay = 2000, multiplier = 2.0), dltTopicSuffix = ".dlq", autoCreateTopics = "true")
