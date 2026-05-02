@@ -95,8 +95,61 @@ jobs:
           docker push "$IMAGE_URI"
           docker push "$LATEST_URI"
 
-  deploy-ecs:
+  init-rds-databases:
     needs: docker-build-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create required databases on RDS
+        env:
+          RDS_HOST: ${{ secrets.RDS_HOST }}
+          RDS_PORT: ${{ secrets.RDS_PORT }}
+          RDS_USER: ${{ secrets.RDS_USER }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          RDS_ADMIN_DB: ${{ secrets.RDS_ADMIN_DB }}
+        run: |
+          set -euo pipefail
+          : "${RDS_HOST:?RDS_HOST is required}"
+          : "${RDS_USER:?RDS_USER is required}"
+          : "${RDS_PASSWORD:?RDS_PASSWORD is required}"
+          ADMIN_DB="${RDS_ADMIN_DB:-postgres}"
+          export PGPASSWORD="${RDS_PASSWORD}"
+
+          DB_LIST=(
+            auth_db
+            product_db
+            cart_db
+            order_db
+            payment_db
+            seller_db
+            campaign_db
+          )
+
+          for db in "${DB_LIST[@]}"; do
+            exists="$(psql "host=${RDS_HOST} port=${RDS_PORT:-5432} user=${RDS_USER} dbname=${ADMIN_DB} sslmode=require" \
+              -tAc "SELECT 1 FROM pg_database WHERE datname='${db}'")"
+            if [ "${exists}" = "1" ]; then
+              echo "Database already exists: ${db}"
+            else
+              echo "Creating database: ${db}"
+              psql "host=${RDS_HOST} port=${RDS_PORT:-5432} user=${RDS_USER} dbname=${ADMIN_DB} sslmode=require" \
+                -c "CREATE DATABASE ${db};"
+            fi
+          done
+
+  deploy-ecs:
+    needs: [docker-build-push, init-rds-databases]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -135,13 +188,23 @@ jobs:
           RDS_PORT: ${{ secrets.RDS_PORT }}
           RDS_USER: ${{ secrets.RDS_USER }}
           RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          AUTH_DB_URL: ${{ secrets.AUTH_DB_URL }}
           PRODUCT_DB_URL: ${{ secrets.PRODUCT_DB_URL }}
+          CART_DB_URL: ${{ secrets.CART_DB_URL }}
+          ORDER_DB_URL: ${{ secrets.ORDER_DB_URL }}
+          PAYMENT_DB_URL: ${{ secrets.PAYMENT_DB_URL }}
+          SELLER_DB_URL: ${{ secrets.SELLER_DB_URL }}
+          CAMPAIGN_DB_URL: ${{ secrets.CAMPAIGN_DB_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          SPRING_KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.SPRING_KAFKA_BOOTSTRAP_SERVERS }}
           SPRING_CACHE_TYPE: ${{ secrets.SPRING_CACHE_TYPE }}
           REDIS_HOST: ${{ secrets.REDIS_HOST }}
           REDIS_PORT: ${{ secrets.REDIS_PORT }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          SPRING_DATA_REDIS_HOST: ${{ secrets.SPRING_DATA_REDIS_HOST }}
+          SPRING_DATA_REDIS_PORT: ${{ secrets.SPRING_DATA_REDIS_PORT }}
+          SPRING_DATA_REDIS_PASSWORD: ${{ secrets.SPRING_DATA_REDIS_PASSWORD }}
           MAIL_HOST: ${{ secrets.MAIL_HOST }}
           MAIL_PORT: ${{ secrets.MAIL_PORT }}
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
@@ -159,6 +222,10 @@ jobs:
           INPUT_FILE="infra/ecs/taskdefs/${{ matrix.service }}.json"
           OUTPUT_FILE="/tmp/${{ matrix.service }}-taskdef.json"
           cp "$INPUT_FILE" "$OUTPUT_FILE"
+          KAFKA_ENDPOINT="${SPRING_KAFKA_BOOTSTRAP_SERVERS:-${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}}"
+          REDIS_HOST_FINAL="${SPRING_DATA_REDIS_HOST:-${REDIS_HOST:-redis}}"
+          REDIS_PORT_FINAL="${SPRING_DATA_REDIS_PORT:-${REDIS_PORT:-6379}}"
+          REDIS_PASSWORD_FINAL="${SPRING_DATA_REDIS_PASSWORD:-${REDIS_PASSWORD:-}}"
           sed -i \
             -e "s|__IMAGE__|${IMAGE_URI}|g" \
             -e "s|__ECS_EXECUTION_ROLE_ARN__|${ECS_EXECUTION_ROLE_ARN}|g" \
@@ -169,13 +236,19 @@ jobs:
             -e "s|__RDS_PORT__|${RDS_PORT:-5432}|g" \
             -e "s|__RDS_USER__|${RDS_USER}|g" \
             -e "s|__RDS_PASSWORD__|${RDS_PASSWORD}|g" \
-            -e "s|__PRODUCT_DB_URL__|${PRODUCT_DB_URL}|g" \
+            -e "s|__AUTH_DB_URL__|${AUTH_DB_URL:-jdbc:postgresql://${RDS_HOST}:${RDS_PORT:-5432}/auth_db}|g" \
+            -e "s|__PRODUCT_DB_URL__|${PRODUCT_DB_URL:-jdbc:postgresql://${RDS_HOST}:${RDS_PORT:-5432}/product_db}|g" \
+            -e "s|__CART_DB_URL__|${CART_DB_URL:-jdbc:postgresql://${RDS_HOST}:${RDS_PORT:-5432}/cart_db}|g" \
+            -e "s|__ORDER_DB_URL__|${ORDER_DB_URL:-jdbc:postgresql://${RDS_HOST}:${RDS_PORT:-5432}/order_db}|g" \
+            -e "s|__PAYMENT_DB_URL__|${PAYMENT_DB_URL:-jdbc:postgresql://${RDS_HOST}:${RDS_PORT:-5432}/payment_db}|g" \
+            -e "s|__SELLER_DB_URL__|${SELLER_DB_URL:-jdbc:postgresql://${RDS_HOST}:${RDS_PORT:-5432}/seller_db}|g" \
+            -e "s|__CAMPAIGN_DB_URL__|${CAMPAIGN_DB_URL:-jdbc:postgresql://${RDS_HOST}:${RDS_PORT:-5432}/campaign_db}|g" \
             -e "s|__JWT_SECRET__|${JWT_SECRET}|g" \
-            -e "s|__KAFKA_BOOTSTRAP_SERVERS__|${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}|g" \
+            -e "s|__KAFKA_BOOTSTRAP_SERVERS__|${KAFKA_ENDPOINT}|g" \
             -e "s|__SPRING_CACHE_TYPE__|${SPRING_CACHE_TYPE:-redis}|g" \
-            -e "s|__REDIS_HOST__|${REDIS_HOST:-redis}|g" \
-            -e "s|__REDIS_PORT__|${REDIS_PORT:-6379}|g" \
-            -e "s|__REDIS_PASSWORD__|${REDIS_PASSWORD}|g" \
+            -e "s|__REDIS_HOST__|${REDIS_HOST_FINAL}|g" \
+            -e "s|__REDIS_PORT__|${REDIS_PORT_FINAL}|g" \
+            -e "s|__REDIS_PASSWORD__|${REDIS_PASSWORD_FINAL}|g" \
             -e "s|__MAIL_HOST__|${MAIL_HOST}|g" \
             -e "s|__MAIL_PORT__|${MAIL_PORT:-587}|g" \
             -e "s|__MAIL_USERNAME__|${MAIL_USERNAME}|g" \

@@ -20,7 +20,8 @@
         { "name": "DB_PORT", "value": "__RDS_PORT__" },
         { "name": "DB_USER", "value": "__RDS_USER__" },
         { "name": "DB_PASS", "value": "__RDS_PASSWORD__" },
-        { "name": "DB_NAME", "value": "cart_db" }
+        { "name": "DB_NAME", "value": "cart_db" },
+        { "name": "CART_DB_URL", "value": "__CART_DB_URL__" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",

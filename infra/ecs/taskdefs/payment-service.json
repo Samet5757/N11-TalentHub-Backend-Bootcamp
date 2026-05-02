@@ -57,11 +57,15 @@
           "value": "payment_db"
         },
         {
-          "name": "PRODUCT_DB_URL",
-          "value": "__PRODUCT_DB_URL__"
+          "name": "PAYMENT_DB_URL",
+          "value": "__PAYMENT_DB_URL__"
         },
         {
           "name": "KAFKA_BOOTSTRAP_SERVERS",
+          "value": "__KAFKA_BOOTSTRAP_SERVERS__"
+        },
+        {
+          "name": "SPRING_KAFKA_BOOTSTRAP_SERVERS",
           "value": "__KAFKA_BOOTSTRAP_SERVERS__"
         },
         {

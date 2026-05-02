@@ -57,8 +57,8 @@
           "value": "auth_db"
         },
         {
-          "name": "PRODUCT_DB_URL",
-          "value": "__PRODUCT_DB_URL__"
+          "name": "AUTH_DB_URL",
+          "value": "__AUTH_DB_URL__"
         },
         {
           "name": "JWT_SECRET",
