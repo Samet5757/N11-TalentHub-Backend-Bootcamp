@@ -97,7 +97,6 @@ jobs:
 
   deploy-ecs:
     needs: docker-build-push
-    if: ${{ env.ECS_CLUSTER != '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
