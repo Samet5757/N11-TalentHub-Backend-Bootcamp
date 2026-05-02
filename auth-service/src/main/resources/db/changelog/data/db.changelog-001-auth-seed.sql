@@ -1,7 +1,6 @@
 --liquibase formatted sql
 
---changeset codex:auth-seed-001
---validCheckSum: 9:813bae2da17dcd2b769f7aef80f98d00
+--changeset codex:auth-seed-001 splitStatements:false
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
