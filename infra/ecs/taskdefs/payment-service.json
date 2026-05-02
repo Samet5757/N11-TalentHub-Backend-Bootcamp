@@ -37,6 +37,10 @@
           "value": "__RDS_HOST__"
         },
         {
+          "name": "RDS_HOST",
+          "value": "__RDS_HOST__"
+        },
+        {
           "name": "DB_PORT",
           "value": "__RDS_PORT__"
         },
@@ -51,6 +55,10 @@
         {
           "name": "DB_NAME",
           "value": "payment_db"
+        },
+        {
+          "name": "PRODUCT_DB_URL",
+          "value": "__PRODUCT_DB_URL__"
         },
         {
           "name": "KAFKA_BOOTSTRAP_SERVERS",

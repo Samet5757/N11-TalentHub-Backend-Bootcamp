@@ -17,10 +17,12 @@
         { "name": "SERVER_PORT", "value": "8087" },
         { "name": "EUREKA_DEFAULT_ZONE", "value": "__EUREKA_DEFAULT_ZONE__" },
         { "name": "DB_HOST", "value": "__RDS_HOST__" },
+        { "name": "RDS_HOST", "value": "__RDS_HOST__" },
         { "name": "DB_PORT", "value": "__RDS_PORT__" },
         { "name": "DB_USER", "value": "__RDS_USER__" },
         { "name": "DB_PASS", "value": "__RDS_PASSWORD__" },
-        { "name": "DB_NAME", "value": "campaign_db" }
+        { "name": "DB_NAME", "value": "campaign_db" },
+        { "name": "PRODUCT_DB_URL", "value": "__PRODUCT_DB_URL__" }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
