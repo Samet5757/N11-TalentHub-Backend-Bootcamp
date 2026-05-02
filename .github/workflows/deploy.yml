@@ -8,6 +8,7 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
 
 jobs:
   test-and-package:
@@ -96,7 +97,7 @@ jobs:
 
   deploy-ecs:
     needs: docker-build-push
-    if: ${{ secrets.ECS_CLUSTER != '' }}
+    if: ${{ env.ECS_CLUSTER != '' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -195,5 +196,5 @@ jobs:
         with:
           task-definition: ${{ steps.render-taskdef.outputs.taskdef }}
           service: ${{ matrix.service }}
-          cluster: ${{ secrets.ECS_CLUSTER }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
