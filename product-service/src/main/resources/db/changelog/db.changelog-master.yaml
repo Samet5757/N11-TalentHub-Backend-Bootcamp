@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/data/db.changelog-001-product-seed.sql
   - include:
       file: db/changelog/data/db.changelog-002-product-realistic-update.sql
+  - include:
+      file: db/changelog/data/db.changelog-003-messaging-tables.sql
