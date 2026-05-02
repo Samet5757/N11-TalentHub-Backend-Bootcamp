@@ -115,8 +115,8 @@ jobs:
         env:
           RDS_HOST: ${{ secrets.RDS_HOST }}
           RDS_PORT: ${{ secrets.RDS_PORT }}
-          RDS_USER: ${{ secrets.RDS_USER }}
-          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          RDS_USER: ${{ secrets.RDS_USER || secrets.DB_USER }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD || secrets.DB_PASS }}
           RDS_ADMIN_DB: ${{ secrets.RDS_ADMIN_DB }}
         run: |
           set -euo pipefail
@@ -186,8 +186,8 @@ jobs:
           EUREKA_DEFAULT_ZONE: ${{ secrets.EUREKA_DEFAULT_ZONE }}
           RDS_HOST: ${{ secrets.RDS_HOST }}
           RDS_PORT: ${{ secrets.RDS_PORT }}
-          RDS_USER: ${{ secrets.RDS_USER }}
-          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          RDS_USER: ${{ secrets.RDS_USER || secrets.DB_USER }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD || secrets.DB_PASS }}
           AUTH_DB_URL: ${{ secrets.AUTH_DB_URL }}
           PRODUCT_DB_URL: ${{ secrets.PRODUCT_DB_URL }}
           CART_DB_URL: ${{ secrets.CART_DB_URL }}
