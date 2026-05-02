@@ -6,7 +6,7 @@ WORKDIR /workspace
 COPY . .
 RUN mvn -q -pl ${MODULE} -am -DskipTests package
 
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre-alpine
 ARG MODULE
 ENV SPRING_PROFILES_ACTIVE=prod \
     JAVA_OPTS=""
