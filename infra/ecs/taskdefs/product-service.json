@@ -1,0 +1,86 @@
+{
+  "family": "product-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "__ECS_EXECUTION_ROLE_ARN__",
+  "taskRoleArn": "__ECS_TASK_ROLE_ARN__",
+  "containerDefinitions": [
+    {
+      "name": "product-service",
+      "image": "__IMAGE__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8081,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "SPRING_PROFILES_ACTIVE",
+          "value": "prod"
+        },
+        {
+          "name": "SERVER_PORT",
+          "value": "8081"
+        },
+        {
+          "name": "EUREKA_DEFAULT_ZONE",
+          "value": "__EUREKA_DEFAULT_ZONE__"
+        },
+        {
+          "name": "DB_HOST",
+          "value": "__RDS_HOST__"
+        },
+        {
+          "name": "DB_PORT",
+          "value": "__RDS_PORT__"
+        },
+        {
+          "name": "DB_USER",
+          "value": "__RDS_USER__"
+        },
+        {
+          "name": "DB_PASS",
+          "value": "__RDS_PASSWORD__"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "product_db"
+        },
+        {
+          "name": "KAFKA_BOOTSTRAP_SERVERS",
+          "value": "__KAFKA_BOOTSTRAP_SERVERS__"
+        },
+        {
+          "name": "SPRING_CACHE_TYPE",
+          "value": "__SPRING_CACHE_TYPE__"
+        },
+        {
+          "name": "REDIS_HOST",
+          "value": "__REDIS_HOST__"
+        },
+        {
+          "name": "REDIS_PORT",
+          "value": "__REDIS_PORT__"
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "value": "__REDIS_PASSWORD__"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/product-service",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

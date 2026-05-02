@@ -1,0 +1,199 @@
+name: Build and Deploy to ECR
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build and Test
+        run: mvn -B -DskipITs test package
+
+  docker-build-push:
+    needs: test-and-package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: discovery-server
+            dockerfile: discovery-server/Dockerfile
+          - name: api-gateway
+            dockerfile: api-gateway/Dockerfile
+          - name: auth-service
+            dockerfile: auth-service/Dockerfile
+          - name: product-service
+            dockerfile: product-service/Dockerfile
+          - name: cart-service
+            dockerfile: cart-service/Dockerfile
+          - name: order-service
+            dockerfile: order-service/Dockerfile
+          - name: payment-service
+            dockerfile: payment-service/Dockerfile
+          - name: seller-service
+            dockerfile: seller-service/Dockerfile
+          - name: campaign-service
+            dockerfile: campaign-service/Dockerfile
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/${{ matrix.service.name }}:${IMAGE_TAG}"
+          LATEST_URI="${ECR_REGISTRY}/${{ matrix.service.name }}:latest"
+
+          if [ "${{ matrix.service.name }}" = "frontend" ]; then
+            docker build -f "${{ matrix.service.dockerfile }}" \
+              -t "$IMAGE_URI" \
+              -t "$LATEST_URI" \
+              .
+          else
+            docker build -f "${{ matrix.service.dockerfile }}" \
+              --build-arg MODULE="${{ matrix.service.name }}" \
+              -t "$IMAGE_URI" \
+              -t "$LATEST_URI" \
+              .
+          fi
+
+          docker push "$IMAGE_URI"
+          docker push "$LATEST_URI"
+
+  deploy-ecs:
+    needs: docker-build-push
+    if: ${{ secrets.ECS_CLUSTER != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - discovery-server
+          - api-gateway
+          - auth-service
+          - product-service
+          - cart-service
+          - order-service
+          - payment-service
+          - seller-service
+          - campaign-service
+          - frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Render task definition
+        id: render-taskdef
+        env:
+          IMAGE_URI: ${{ env.ECR_REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          ECS_EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ secrets.ECS_TASK_ROLE_ARN }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          EUREKA_DEFAULT_ZONE: ${{ secrets.EUREKA_DEFAULT_ZONE }}
+          RDS_HOST: ${{ secrets.RDS_HOST }}
+          RDS_PORT: ${{ secrets.RDS_PORT }}
+          RDS_USER: ${{ secrets.RDS_USER }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          SPRING_CACHE_TYPE: ${{ secrets.SPRING_CACHE_TYPE }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          IYZICO_BASE_URL: ${{ secrets.IYZICO_BASE_URL }}
+          IYZICO_API_KEY: ${{ secrets.IYZICO_API_KEY }}
+          IYZICO_SECRET_KEY: ${{ secrets.IYZICO_SECRET_KEY }}
+          AUTH_SERVICE_URL: ${{ secrets.AUTH_SERVICE_URL }}
+          PRODUCT_SERVICE_URL: ${{ secrets.PRODUCT_SERVICE_URL }}
+          CART_SERVICE_URL: ${{ secrets.CART_SERVICE_URL }}
+          ORDER_SERVICE_URL: ${{ secrets.ORDER_SERVICE_URL }}
+          PAYMENT_SERVICE_URL: ${{ secrets.PAYMENT_SERVICE_URL }}
+          SELLER_SERVICE_URL: ${{ secrets.SELLER_SERVICE_URL }}
+        run: |
+          INPUT_FILE="infra/ecs/taskdefs/${{ matrix.service }}.json"
+          OUTPUT_FILE="/tmp/${{ matrix.service }}-taskdef.json"
+          cp "$INPUT_FILE" "$OUTPUT_FILE"
+          sed -i \
+            -e "s|__IMAGE__|${IMAGE_URI}|g" \
+            -e "s|__ECS_EXECUTION_ROLE_ARN__|${ECS_EXECUTION_ROLE_ARN}|g" \
+            -e "s|__ECS_TASK_ROLE_ARN__|${ECS_TASK_ROLE_ARN}|g" \
+            -e "s|__AWS_REGION__|${AWS_REGION}|g" \
+            -e "s|__EUREKA_DEFAULT_ZONE__|${EUREKA_DEFAULT_ZONE:-http://discovery-server:8761/eureka/}|g" \
+            -e "s|__RDS_HOST__|${RDS_HOST}|g" \
+            -e "s|__RDS_PORT__|${RDS_PORT:-5432}|g" \
+            -e "s|__RDS_USER__|${RDS_USER}|g" \
+            -e "s|__RDS_PASSWORD__|${RDS_PASSWORD}|g" \
+            -e "s|__JWT_SECRET__|${JWT_SECRET}|g" \
+            -e "s|__KAFKA_BOOTSTRAP_SERVERS__|${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}|g" \
+            -e "s|__SPRING_CACHE_TYPE__|${SPRING_CACHE_TYPE:-redis}|g" \
+            -e "s|__REDIS_HOST__|${REDIS_HOST:-redis}|g" \
+            -e "s|__REDIS_PORT__|${REDIS_PORT:-6379}|g" \
+            -e "s|__REDIS_PASSWORD__|${REDIS_PASSWORD}|g" \
+            -e "s|__MAIL_HOST__|${MAIL_HOST}|g" \
+            -e "s|__MAIL_PORT__|${MAIL_PORT:-587}|g" \
+            -e "s|__MAIL_USERNAME__|${MAIL_USERNAME}|g" \
+            -e "s|__MAIL_PASSWORD__|${MAIL_PASSWORD}|g" \
+            -e "s|__IYZICO_BASE_URL__|${IYZICO_BASE_URL:-https://sandbox-api.iyzipay.com}|g" \
+            -e "s|__IYZICO_API_KEY__|${IYZICO_API_KEY}|g" \
+            -e "s|__IYZICO_SECRET_KEY__|${IYZICO_SECRET_KEY}|g" \
+            -e "s|__AUTH_SERVICE_URL__|${AUTH_SERVICE_URL:-http://auth-service:8085}|g" \
+            -e "s|__PRODUCT_SERVICE_URL__|${PRODUCT_SERVICE_URL:-http://product-service:8081}|g" \
+            -e "s|__CART_SERVICE_URL__|${CART_SERVICE_URL:-http://cart-service:8082}|g" \
+            -e "s|__ORDER_SERVICE_URL__|${ORDER_SERVICE_URL:-http://order-service:8083}|g" \
+            -e "s|__PAYMENT_SERVICE_URL__|${PAYMENT_SERVICE_URL:-http://payment-service:8084}|g" \
+            -e "s|__SELLER_SERVICE_URL__|${SELLER_SERVICE_URL:-http://seller-service:8086}|g" \
+            "$OUTPUT_FILE"
+          echo "taskdef=$OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-taskdef.outputs.taskdef }}
+          service: ${{ matrix.service }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
+          wait-for-service-stability: true

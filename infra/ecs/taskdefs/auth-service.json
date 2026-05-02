@@ -1,0 +1,70 @@
+{
+  "family": "auth-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "__ECS_EXECUTION_ROLE_ARN__",
+  "taskRoleArn": "__ECS_TASK_ROLE_ARN__",
+  "containerDefinitions": [
+    {
+      "name": "auth-service",
+      "image": "__IMAGE__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8085,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "SPRING_PROFILES_ACTIVE",
+          "value": "prod"
+        },
+        {
+          "name": "SERVER_PORT",
+          "value": "8085"
+        },
+        {
+          "name": "EUREKA_DEFAULT_ZONE",
+          "value": "__EUREKA_DEFAULT_ZONE__"
+        },
+        {
+          "name": "DB_HOST",
+          "value": "__RDS_HOST__"
+        },
+        {
+          "name": "DB_PORT",
+          "value": "__RDS_PORT__"
+        },
+        {
+          "name": "DB_USER",
+          "value": "__RDS_USER__"
+        },
+        {
+          "name": "DB_PASS",
+          "value": "__RDS_PASSWORD__"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "auth_db"
+        },
+        {
+          "name": "JWT_SECRET",
+          "value": "__JWT_SECRET__"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/auth-service",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

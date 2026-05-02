@@ -79,3 +79,40 @@ Eger ortamda kurumsal Maven mirror DNS erisimi yoksa test bagimlilik indirmesi h
 
 - `CODEX_HANDOVER.md` operasyonel takip dosyasidir ve git ignore altindadir.
 - Frontend tarafinda API cagrilari `/api/*` uzerinden proxylenir (React route cakismasi engellenmistir).
+
+## Prod Deployment (ECS + ECR)
+
+Bu repo icinde prod hazirliklari eklidir:
+
+- Servis bazli Dockerfile: `*/Dockerfile`
+- Prod profile dosyalari: `*/src/main/resources/application-prod.properties`
+- Merkezi prod compose: `docker-compose.yml`
+- CI/CD workflow: `.github/workflows/deploy.yml`
+- ECS task definition sablonlari: `infra/ecs/taskdefs/*.json`
+- Ornek env: `.env.prod.example`
+
+### Gerekli GitHub Secrets
+
+- `AWS_REGION`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `ECR_REGISTRY` (ornek: `123456789012.dkr.ecr.eu-north-1.amazonaws.com`)
+- `ECS_CLUSTER`
+- `ECS_EXECUTION_ROLE_ARN`
+- `ECS_TASK_ROLE_ARN`
+- `EUREKA_DEFAULT_ZONE`
+- `JWT_SECRET`
+- `RDS_HOST`
+- `RDS_PORT` (opsiyonel, default `5432`)
+- `RDS_USER`
+- `RDS_PASSWORD`
+- `KAFKA_BOOTSTRAP_SERVERS` (opsiyonel)
+- `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` (opsiyonel)
+- `SPRING_CACHE_TYPE` (opsiyonel, default `redis`)
+- `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD`
+- `IYZICO_BASE_URL` / `IYZICO_API_KEY` / `IYZICO_SECRET_KEY`
+- `AUTH_SERVICE_URL` / `PRODUCT_SERVICE_URL` / `CART_SERVICE_URL` / `ORDER_SERVICE_URL` / `PAYMENT_SERVICE_URL` / `SELLER_SERVICE_URL` (opsiyonel)
+
+### Onemli Operasyon Notu
+
+- Servis sifreleri ve anahtarlar repo icinde tutulmamali, AWS Secrets Manager veya SSM Parameter Store ile yonetilmelidir.

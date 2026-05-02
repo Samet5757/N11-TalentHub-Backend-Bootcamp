@@ -1,0 +1,37 @@
+{
+  "family": "api-gateway",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "__ECS_EXECUTION_ROLE_ARN__",
+  "taskRoleArn": "__ECS_TASK_ROLE_ARN__",
+  "containerDefinitions": [
+    {
+      "name": "api-gateway",
+      "image": "__IMAGE__",
+      "essential": true,
+      "portMappings": [{ "containerPort": 8080, "protocol": "tcp" }],
+      "environment": [
+        { "name": "SPRING_PROFILES_ACTIVE", "value": "prod" },
+        { "name": "SERVER_PORT", "value": "8080" },
+        { "name": "EUREKA_DEFAULT_ZONE", "value": "__EUREKA_DEFAULT_ZONE__" },
+        { "name": "JWT_SECRET", "value": "__JWT_SECRET__" },
+        { "name": "AUTH_SERVICE_URL", "value": "__AUTH_SERVICE_URL__" },
+        { "name": "PRODUCT_SERVICE_URL", "value": "__PRODUCT_SERVICE_URL__" },
+        { "name": "CART_SERVICE_URL", "value": "__CART_SERVICE_URL__" },
+        { "name": "ORDER_SERVICE_URL", "value": "__ORDER_SERVICE_URL__" },
+        { "name": "PAYMENT_SERVICE_URL", "value": "__PAYMENT_SERVICE_URL__" },
+        { "name": "SELLER_SERVICE_URL", "value": "__SELLER_SERVICE_URL__" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/api-gateway",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
