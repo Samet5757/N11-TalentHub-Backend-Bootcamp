@@ -53,6 +53,10 @@
           "value": "product_db"
         },
         {
+          "name": "PRODUCT_DB_URL",
+          "value": "__PRODUCT_DB_URL__"
+        },
+        {
           "name": "KAFKA_BOOTSTRAP_SERVERS",
           "value": "__KAFKA_BOOTSTRAP_SERVERS__"
         },
