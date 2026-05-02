@@ -20,7 +20,12 @@ export default function LoginPage({ setUser, onLoggedIn }) {
       setUser(me);
       navigate('/');
     } catch (err) {
-      setError(err.message);
+      const message = err?.message || '';
+      if (message.includes('401') || message.toLowerCase().includes('unauthorized')) {
+        setError('Kullanici adi veya sifre hatali.');
+      } else {
+        setError(message || 'Giris yapilamadi. Lutfen tekrar deneyin.');
+      }
     }
   }
 

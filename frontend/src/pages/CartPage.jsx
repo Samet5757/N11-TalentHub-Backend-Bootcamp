@@ -12,13 +12,13 @@ export default function CartPage({ cart, onReloadCart, onRemoveItem, onUpdateQty
   const cleanedCvv = cvv.replace(/\D+/g, '');
   const normalizedExpiry = expiry.replace(/\s+/g, '');
   const isExpiryValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(normalizedExpiry);
-  const canCheckout = !!cart.items?.length
+  const canCheckout = !!cart?.items?.length
     && !isCheckingOut
     && cleanedCard.length >= 12
     && cardHolderName.trim().length >= 3
     && isExpiryValid
     && (cleanedCvv.length === 3 || cleanedCvv.length === 4);
-  const hasCoupon = !!cart.couponCode;
+  const hasCoupon = !!cart?.couponCode;
   const checkoutError = checkoutState.error?.toLowerCase().includes('stok')
     ? 'Stok yetersiz. Bazi urunlerin adedini dusurup tekrar deneyin.'
     : checkoutState.error;

@@ -24,6 +24,12 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      if (path.startsWith('/auth/login')) {
+        throw new Error('Kullanici adi veya sifre hatali.');
+      }
+      throw new Error('Oturum suresi doldu. Lutfen tekrar giris yapin.');
+    }
     throw new Error(data?.message || data?.error || data?.raw || `Request failed: ${res.status}`);
   }
   return data;

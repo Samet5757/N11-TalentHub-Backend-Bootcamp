@@ -100,9 +100,25 @@ input, select, textarea {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #ffffff;
-  color: var(--ink);
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  font-weight: 500;
+  opacity: 1 !important;
 }
+input::placeholder, textarea::placeholder { color: #6b7280; opacity: 1; }
+select { color: #111827; }
+select option { color: #111827; background: #ffffff; }
 input:focus, select:focus, textarea:focus { outline: 2px solid rgba(255, 0, 184, 0.35); border-color: #ff33ca; }
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #111827 !important;
+  box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
 .grid { display: grid; gap: 14px; }
 .products { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
 .product-image { width: 100%; height: 190px; border-radius: 12px; object-fit: cover; background: #171722; }
