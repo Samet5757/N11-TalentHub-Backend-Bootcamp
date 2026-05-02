@@ -66,6 +66,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Validate DB credentials for service
+        if: matrix.service != 'discovery-server' && matrix.service != 'api-gateway' && matrix.service != 'frontend'
+        env:
+          RDS_HOST: ${{ secrets.RDS_HOST }}
+          RDS_USER: ${{ secrets.RDS_USER || secrets.DB_USER }}
+          RDS_PASSWORD: ${{ secrets.RDS_PASSWORD || secrets.DB_PASS }}
+        run: |
+          set -euo pipefail
+          : "${RDS_HOST:?RDS_HOST is required for DB services}"
+          : "${RDS_USER:?RDS_USER or DB_USER is required for DB services}"
+          : "${RDS_PASSWORD:?RDS_PASSWORD or DB_PASS is required for DB services}"
+
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
