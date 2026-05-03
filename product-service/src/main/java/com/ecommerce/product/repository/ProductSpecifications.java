@@ -3,6 +3,9 @@ package com.ecommerce.product.repository;
 import com.ecommerce.product.entity.Product;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.Arrays;
+import java.util.List;
+
 public final class ProductSpecifications {
     private ProductSpecifications() {
     }
@@ -35,12 +38,23 @@ public final class ProductSpecifications {
             if (search == null || search.isBlank()) {
                 return null;
             }
-            String pattern = "%" + search.toLowerCase().trim() + "%";
-            return criteriaBuilder.or(
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("brand")), pattern),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), pattern)
-            );
+            List<String> tokens = Arrays.stream(search.toLowerCase().trim().split("\\s+"))
+                    .filter(token -> !token.isBlank())
+                    .toList();
+            if (tokens.isEmpty()) {
+                return null;
+            }
+
+            return criteriaBuilder.and(tokens.stream()
+                    .map(token -> {
+                        String pattern = "%" + token + "%";
+                        return criteriaBuilder.or(
+                                criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern),
+                                criteriaBuilder.like(criteriaBuilder.lower(root.get("brand")), pattern),
+                                criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), pattern)
+                        );
+                    })
+                    .toArray(jakarta.persistence.criteria.Predicate[]::new));
         };
     }
 }

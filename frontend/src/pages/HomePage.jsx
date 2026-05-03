@@ -64,7 +64,6 @@ export default function HomePage({ onQuickAdd }) {
           <h1>Super Market Place Deneyimi</h1>
           <p>Bugune ozel secili urunlerde hizli teslimat ve avantajli fiyatlar.</p>
           <div className="row">
-            <button className="btn primary" onClick={search}>Kampanyalari Kesfet</button>
             <span className="meta">Ayni gun kargo uygun urunler</span>
           </div>
         </div>
@@ -75,7 +74,7 @@ export default function HomePage({ onQuickAdd }) {
           </div>
           <div className="mini-banner">
             <strong>Sepette Avantaj</strong>
-            <span>Coklu urun aliminda ek indirim</span>
+            <span>Coklu urun aliminda ek indirim - Kupon: SEPET50</span>
           </div>
         </div>
       </section>

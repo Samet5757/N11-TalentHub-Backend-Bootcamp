@@ -2,13 +2,13 @@ const categoryImageTags = {
   1: 'running-shoes',
   2: 'sneakers',
   3: 'smartphone',
-  4: 'tablet-device',
-  5: 'fashion-clothes',
-  6: 'living-room-furniture',
-  7: 'kitchen-cookware',
-  8: 'cleaning-supplies',
-  9: 'skincare-cosmetics',
-  10: 'grocery-food'
+  4: 'tablet',
+  5: 'fashion',
+  6: 'furniture',
+  7: 'kitchen',
+  8: 'cleaning',
+  9: 'skincare',
+  10: 'groceries'
 };
 
 const categoryNamePools = {
@@ -36,7 +36,7 @@ function pickImage(product) {
   const categoryId = Number(product?.categoryId);
   const tag = categoryImageTags[categoryId] || 'product';
   const lock = Math.abs(Number(product?.id || categoryId || 1));
-  return `https://loremflickr.com/960/640/${tag}?lock=${lock}`;
+  return `https://picsum.photos/seed/${encodeURIComponent(`${tag}-${lock}`)}/960/640`;
 }
 
 export function presentProduct(product) {
