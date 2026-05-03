@@ -9,9 +9,11 @@ spring:
         - JwtAuthenticationFilter
       routes:
         - id: auth-service
-          uri: ${AUTH_SERVICE_URL:http://localhost:8085}
+          uri: ${AUTH_SERVICE_URL:lb://auth-service}
           predicates:
-            - Path=/auth/**
+            - Path=/auth/**,/api/v1/auth/**
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /${segment}
         - id: product-service
           uri: ${PRODUCT_SERVICE_URL:lb://product-service}
           predicates:
@@ -19,21 +21,35 @@ spring:
           filters:
             - RewritePath=/api/v1/(?<segment>.*), /${segment}
         - id: cart-service
-          uri: ${CART_SERVICE_URL:http://localhost:8082}
+          uri: ${CART_SERVICE_URL:lb://cart-service}
           predicates:
-            - Path=/carts,/carts/**
+            - Path=/carts,/carts/**,/api/v1/carts/**,/api/v1/carts
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /${segment}
         - id: order-service
-          uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+          uri: ${ORDER_SERVICE_URL:lb://order-service}
           predicates:
-            - Path=/orders,/orders/**
+            - Path=/orders,/orders/**,/api/v1/orders/**,/api/v1/orders
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /${segment}
         - id: payment-service
-          uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
+          uri: ${PAYMENT_SERVICE_URL:lb://payment-service}
           predicates:
-            - Path=/payments,/payments/**
+            - Path=/payments,/payments/**,/api/v1/payments/**,/api/v1/payments
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /${segment}
         - id: seller-service
-          uri: ${SELLER_SERVICE_URL:http://localhost:8086}
+          uri: ${SELLER_SERVICE_URL:lb://seller-service}
           predicates:
-            - Path=/sellers/**
+            - Path=/sellers/**,/api/v1/sellers/**
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /${segment}
+        - id: campaign-service
+          uri: ${CAMPAIGN_SERVICE_URL:lb://campaign-service}
+          predicates:
+            - Path=/campaigns/**,/api/v1/campaigns/**
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /${segment}
 eureka:
   client:
     service-url:
