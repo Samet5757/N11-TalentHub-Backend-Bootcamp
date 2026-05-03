@@ -312,3 +312,38 @@ jobs:
           service: ${{ matrix.service }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+  slack-notify:
+    needs: [test-and-package, docker-build-push, init-rds-databases, deploy-ecs]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Slack notify (success)
+        if: ${{ needs.test-and-package.result == 'success' && needs.docker-build-push.result == 'success' && needs.init-rds-databases.result == 'success' && needs.deploy-ecs.result == 'success' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "SLACK_WEBHOOK_URL tanimli degil, bildirim atlanacak."
+            exit 0
+          fi
+          MSG="✅ Workflow '${{ github.workflow }}' basarili. Repo: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}"
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${MSG}\"}" \
+            "${SLACK_WEBHOOK_URL}"
+
+      - name: Slack notify (failure)
+        if: ${{ needs.test-and-package.result != 'success' || needs.docker-build-push.result != 'success' || needs.init-rds-databases.result != 'success' || needs.deploy-ecs.result != 'success' }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "SLACK_WEBHOOK_URL tanimli degil, bildirim atlanacak."
+            exit 0
+          fi
+          MSG="❌ Workflow '${{ github.workflow }}' basarisiz. Repo: ${{ github.repository }} | Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}"
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${MSG}\"}" \
+            "${SLACK_WEBHOOK_URL}"
