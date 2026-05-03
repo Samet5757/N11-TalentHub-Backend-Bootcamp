@@ -55,4 +55,33 @@ class CampaignServiceTest {
 
         assertThrows(CampaignNotFoundException.class, () -> campaignService.validateCampaign("PASIF"));
     }
+
+    @Test
+    void validateCampaign_whenBlankCode_shouldThrow() {
+        assertThrows(IllegalArgumentException.class, () -> campaignService.validateCampaign(" "));
+    }
+
+    @Test
+    void validateCampaign_whenNotFound_shouldThrow() {
+        when(campaignRepository.findByCodeIgnoreCase("UNKNOWN")).thenReturn(Optional.empty());
+
+        assertThrows(CampaignNotFoundException.class, () -> campaignService.validateCampaign("UNKNOWN"));
+    }
+
+    @Test
+    void validateCampaign_shouldTrimInputCode() {
+        Campaign campaign = new Campaign();
+        campaign.setId(9L);
+        campaign.setCode("KOD1");
+        campaign.setDiscountType(DiscountType.FLAT_AMOUNT);
+        campaign.setDiscountValue(25.0);
+        campaign.setActive(true);
+
+        when(campaignRepository.findByCodeIgnoreCase("KOD1")).thenReturn(Optional.of(campaign));
+
+        CampaignResponse response = campaignService.validateCampaign("  KOD1  ");
+
+        assertEquals(9L, response.id());
+        assertEquals("KOD1", response.code());
+    }
 }
