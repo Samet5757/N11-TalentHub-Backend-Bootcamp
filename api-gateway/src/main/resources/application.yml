@@ -13,9 +13,11 @@ spring:
           predicates:
             - Path=/auth/**
         - id: product-service
-          uri: ${PRODUCT_SERVICE_URL:http://localhost:8081}
+          uri: ${PRODUCT_SERVICE_URL:lb://product-service}
           predicates:
-            - Path=/products/**
+            - Path=/products/**,/api/v1/products/**
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /${segment}
         - id: cart-service
           uri: ${CART_SERVICE_URL:http://localhost:8082}
           predicates:
