@@ -27,6 +27,11 @@ export default function Layout({ user, children, setUser, cartItemCount = 0 }) {
                 <Link className="btn" to="/admin">Dashboard</Link>
                 <Link className="btn primary" to="/admin">Admin Paneli</Link>
               </>
+            ) : user?.role === 'SELLER' ? (
+              <>
+                <Link className="btn" to="/seller">Satici Paneli</Link>
+                <Link className="btn primary" to="/seller">Urunlerim</Link>
+              </>
             ) : (
               <>
                 <Link className="btn" to="/">Ana Sayfa</Link>

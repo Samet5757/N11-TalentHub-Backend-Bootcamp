@@ -48,6 +48,8 @@ export const api = {
   logout: () => request('/auth/logout', { method: 'POST' }),
   products: (params) => request(`/products?${toQuery(params)}`),
   product: (id) => request(`/products/${id}`),
+  sellers: (params) => request(`/sellers?${toQuery(params)}`),
+  seller: (id) => request(`/sellers/${id}`),
   createProduct: (payload) => request('/products', { method: 'POST', body: JSON.stringify(payload) }),
   updateProduct: (id, payload) => request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   updateProductStock: (id, stock) => request(`/products/${id}/stock?stock=${encodeURIComponent(stock)}`, { method: 'PUT' }),

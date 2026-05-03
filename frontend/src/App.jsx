@@ -8,6 +8,7 @@ import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
 import OrdersPage from './pages/OrdersPage';
 import AdminDashboard from './pages/AdminDashboard';
+import SellerDashboard from './pages/SellerDashboard';
 import AppErrorBoundary from './components/AppErrorBoundary';
 import { api } from './lib/api';
 import { getToken, getUserContext, onTokenChange } from './lib/auth';
@@ -29,6 +30,13 @@ function CustomerProtected({ token, user, children }) {
   if (!token) return <Navigate to="/login" replace />;
   if (!user) return <div className="meta">Yukleniyor...</div>;
   if (user.role !== 'CUSTOMER') return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/'} replace />;
+  return children;
+}
+
+function SellerProtected({ token, user, children }) {
+  if (!token) return <Navigate to="/login" replace />;
+  if (!user) return <div className="meta">Yukleniyor...</div>;
+  if (user.role !== 'SELLER') return <Navigate to={user.role === 'ADMIN' ? '/admin' : '/'} replace />;
   return children;
 }
 
@@ -100,8 +108,15 @@ export default function App() {
       navigate('/admin', { replace: true });
       return;
     }
+    if (user.role === 'SELLER' && (location.pathname === '/' || location.pathname === '/cart' || location.pathname === '/orders')) {
+      navigate('/seller', { replace: true });
+      return;
+    }
     if (user.role === 'CUSTOMER' && location.pathname === '/admin') {
       navigate('/', { replace: true });
+    }
+    if ((user.role === 'CUSTOMER' || user.role === 'ADMIN') && location.pathname === '/seller') {
+      navigate(user.role === 'ADMIN' ? '/admin' : '/', { replace: true });
     }
   }, [token, user, location.pathname, navigate]);
 
@@ -200,6 +215,7 @@ export default function App() {
           /></CustomerProtected>} />
           <Route path="/orders" element={<CustomerProtected token={token} user={user}><OrdersPage user={user} /></CustomerProtected>} />
           <Route path="/admin" element={<AdminProtected token={token} user={user}><AdminDashboard /></AdminProtected>} />
+          <Route path="/seller" element={<SellerProtected token={token} user={user}><SellerDashboard user={user} /></SellerProtected>} />
         </Routes>
       </AppErrorBoundary>
       <ToastContainer position="top-right" autoClose={2500} hideProgressBar={false} newestOnTop />

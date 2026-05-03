@@ -18,7 +18,7 @@ export default function LoginPage({ setUser, onLoggedIn }) {
       onLoggedIn?.();
       const me = await api.me();
       setUser(me);
-      navigate('/');
+      navigate(me?.role === 'ADMIN' ? '/admin' : me?.role === 'SELLER' ? '/seller' : '/');
     } catch (err) {
       const message = err?.message || '';
       if (message.includes('401') || message.toLowerCase().includes('unauthorized')) {

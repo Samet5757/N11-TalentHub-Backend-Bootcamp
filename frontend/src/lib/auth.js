@@ -39,11 +39,16 @@ export function getUserContext() {
   const token = getToken();
   const payload = parseJwt(token);
   if (!payload) return null;
-  const role = payload.role || (payload.roleCode === 'ROLE_ADMIN' ? 'ADMIN' : 'CUSTOMER');
+  const role = payload.role
+    || (payload.roleCode === 'ROLE_ADMIN'
+      ? 'ADMIN'
+      : payload.roleCode === 'ROLE_SELLER'
+        ? 'SELLER'
+        : 'CUSTOMER');
   return {
     userId: Number(payload.userId ?? payload.sub),
     role,
-    roleCode: payload.roleCode || (role === 'ADMIN' ? 'ROLE_ADMIN' : 'ROLE_USER'),
+    roleCode: payload.roleCode || (role === 'ADMIN' ? 'ROLE_ADMIN' : role === 'SELLER' ? 'ROLE_SELLER' : 'ROLE_USER'),
     username: payload.sub
   };
 }
