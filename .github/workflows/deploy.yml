@@ -148,15 +148,32 @@ jobs:
             campaign_db
           )
 
+          psql_exec() {
+            local sql="$1"
+            local max_attempts=8
+            local attempt=1
+            while true; do
+              if psql "host=${RDS_HOST} port=${RDS_PORT:-5432} user=${RDS_USER} dbname=${ADMIN_DB} sslmode=require connect_timeout=10" -tAc "$sql"; then
+                return 0
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "psql failed after ${max_attempts} attempts"
+                return 1
+              fi
+              sleep_secs=$((attempt * 5))
+              echo "psql connection retry ${attempt}/${max_attempts} after ${sleep_secs}s"
+              sleep "$sleep_secs"
+              attempt=$((attempt + 1))
+            done
+          }
+
           for db in "${DB_LIST[@]}"; do
-            exists="$(psql "host=${RDS_HOST} port=${RDS_PORT:-5432} user=${RDS_USER} dbname=${ADMIN_DB} sslmode=require" \
-              -tAc "SELECT 1 FROM pg_database WHERE datname='${db}'")"
+            exists="$(psql_exec "SELECT 1 FROM pg_database WHERE datname='${db}'")"
             if [ "${exists}" = "1" ]; then
               echo "Database already exists: ${db}"
             else
               echo "Creating database: ${db}"
-              psql "host=${RDS_HOST} port=${RDS_PORT:-5432} user=${RDS_USER} dbname=${ADMIN_DB} sslmode=require" \
-                -c "CREATE DATABASE ${db};"
+              psql_exec "CREATE DATABASE ${db};" >/dev/null
             fi
           done
 
