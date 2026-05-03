@@ -9,6 +9,9 @@ import com.ecommerce.order.entity.OrderStatus;
 import com.ecommerce.order.notification.OrderNotificationOutboxService;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.saga.OrderSagaPublisher;
+import feign.FeignException;
+import feign.Request;
+import feign.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,11 +21,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,6 +97,42 @@ class OrderServiceTest {
     }
 
     @Test
+    void createOrder_shouldRejectWhenStockIsInsufficient() {
+        OrderRequest request = new OrderRequest(
+                2L,
+                1L,
+                100.0,
+                0.0,
+                List.of(new OrderItemRequest(10L, 1, 100.0))
+        );
+        doThrow(conflictFeignException())
+                .when(productServiceClient).reserveStock(eq(10L), eq(1));
+
+        assertThatThrownBy(() -> orderService.createOrder(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Insufficient stock for productId=10");
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void createOrder_shouldFailWhenProductServiceUnavailable() {
+        OrderRequest request = new OrderRequest(
+                2L,
+                1L,
+                100.0,
+                0.0,
+                List.of(new OrderItemRequest(10L, 1, 100.0))
+        );
+        doThrow(internalServerFeignException())
+                .when(productServiceClient).reserveStock(eq(10L), eq(1));
+
+        assertThatThrownBy(() -> orderService.createOrder(request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Product service reservation failed for productId=10");
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     void getOrdersByCustomerId_shouldUseDeterministicRepositoryMethod() {
         Order order = new Order();
         order.setId(5L);
@@ -127,5 +169,45 @@ class OrderServiceTest {
         assertThat(response.status()).isEqualTo(OrderStatus.COMPLETED);
         verify(orderRepository).save(order);
         verify(orderNotificationOutboxService).enqueueCompletedOrderMail(order);
+    }
+
+    private FeignException conflictFeignException() {
+        return FeignException.errorStatus(
+                "reserveStock",
+                Response.builder()
+                        .status(409)
+                        .reason("Conflict")
+                        .request(
+                                Request.create(
+                                        Request.HttpMethod.POST,
+                                        "http://product-service:8081/products/10/reserve?quantity=1",
+                                        Map.of(),
+                                        null,
+                                        null,
+                                        null
+                                )
+                        )
+                        .build()
+        );
+    }
+
+    private FeignException internalServerFeignException() {
+        return FeignException.errorStatus(
+                "reserveStock",
+                Response.builder()
+                        .status(500)
+                        .reason("Internal Server Error")
+                        .request(
+                                Request.create(
+                                        Request.HttpMethod.POST,
+                                        "http://product-service:8081/products/10/reserve?quantity=1",
+                                        Map.of(),
+                                        null,
+                                        null,
+                                        null
+                                )
+                        )
+                        .build()
+        );
     }
 }
