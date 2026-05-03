@@ -70,6 +70,73 @@ Bu script asagidaki zinciri test eder:
 - payment intent + confirm
 - siparislerimde yeni siparis dogrulama
 
+## k6 Performans ve Yarış Testleri
+
+Bu repoda teslim icin iki k6 senaryosu hazirdir:
+
+- `tests/k6-last-item-5-user.js`: 5 kullanici ayni anda tek stoklu urune siparis dener.
+- `tests/k6-load-100-user.js`: 100 kullanici login + urun listeleme + urun detay akisina yuk bindirir.
+
+### k6 Kurulum
+
+```bash
+brew install k6
+```
+
+### 1) Son Urun Yarış Testi (5 Kullanici)
+
+On kosul:
+
+- Test edecegin urunun `stock=1` olmasi gerekir.
+
+Calistirma:
+
+```bash
+TARGET_PRODUCT_ID=206 k6 run tests/k6-last-item-5-user.js
+```
+
+Beklenen sonuc:
+
+- `race_order_created = 1`
+- `race_order_rejected = 4`
+
+Bu sonuc, tek stoklu urunde oversell (fazla satis) olmadigini gosterir.
+
+### 2) 100 Kullanici Yuk Testi
+
+Calistirma:
+
+```bash
+k6 run tests/k6-load-100-user.js
+```
+
+Varsayilan yuk profili:
+
+- 30 sn icinde 100 VU ramp-up
+- 5 dk 100 VU sabit yuk
+- 30 sn ramp-down
+
+Threshold'lar:
+
+- `http_req_failed < %1`
+- `http_req_duration p95 < 1500ms`
+- `http_req_duration avg < 500ms`
+
+### Ortam Degiskenleri
+
+Gerekirse testleri su degiskenlerle override edebilirsin:
+
+- `BASE_URL` (varsayilan: `http://localhost:3000/api`)
+- `AUTH_USER` (varsayilan: `customer1`)
+- `AUTH_PASS` (varsayilan: `pass123`)
+- `TARGET_PRODUCT_ID` (yalnizca yaris testi icin zorunlu)
+
+## Stok Tutarliligi Notu
+
+- Siparis olusturma akisinda stok rezervasyonu senkron/atomik olarak `product-service` uzerinden yapilir.
+- Stok yetersiz ise siparis olusturma reddedilir.
+- Bu degisiklik ile 5 kullanicili yaris testinde beklenen `1 basari / 4 red` sonucu dogrulanmistir.
+
 ## Test Notu
 
 Projede `order-service`, `payment-service` ve `cart-service` icin yeni servis testleri eklidir.
