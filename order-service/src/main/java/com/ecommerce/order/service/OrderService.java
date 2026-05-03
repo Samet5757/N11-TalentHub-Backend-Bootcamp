@@ -1,5 +1,6 @@
 package com.ecommerce.order.service;
 
+import com.ecommerce.order.client.ProductServiceClient;
 import com.ecommerce.order.dto.OrderItemRequest;
 import com.ecommerce.order.dto.OrderItemResponse;
 import com.ecommerce.order.dto.OrderRequest;
@@ -11,6 +12,7 @@ import com.ecommerce.order.exception.OrderNotFoundException;
 import com.ecommerce.order.notification.OrderNotificationOutboxService;
 import com.ecommerce.order.repository.OrderRepository;
 import com.ecommerce.order.saga.OrderSagaPublisher;
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -48,13 +50,16 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderSagaPublisher orderSagaPublisher;
     private final OrderNotificationOutboxService orderNotificationOutboxService;
+    private final ProductServiceClient productServiceClient;
 
     public OrderService(OrderRepository orderRepository,
                         OrderSagaPublisher orderSagaPublisher,
-                        OrderNotificationOutboxService orderNotificationOutboxService) {
+                        OrderNotificationOutboxService orderNotificationOutboxService,
+                        ProductServiceClient productServiceClient) {
         this.orderRepository = orderRepository;
         this.orderSagaPublisher = orderSagaPublisher;
         this.orderNotificationOutboxService = orderNotificationOutboxService;
+        this.productServiceClient = productServiceClient;
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +84,7 @@ public class OrderService {
         validateCreateRequest(request);
         log.info("Creating order for customerId={}, sellerId={}, itemCount={}",
                 request.customerId(), request.sellerId(), request.items() == null ? 0 : request.items().size());
+        reserveStocksBeforeCreate(request.items());
 
         double totalAmount = request.totalAmount();
         double discountAmount = request.discountAmount() == null ? 0.0 : request.discountAmount();
@@ -98,9 +104,25 @@ public class OrderService {
         order.getItems().addAll(mappedItems);
 
         Order saved = orderRepository.save(order);
-        orderSagaPublisher.publishOrderCreated(saved);
+        // Stock is already reserved synchronously during order creation.
+        // Publishing ORDER_CREATED here would trigger a second reservation attempt.
         log.info("Order created id={}, finalAmount={}, status={}", saved.getId(), saved.getFinalAmount(), saved.getStatus());
         return toResponse(saved);
+    }
+
+    private void reserveStocksBeforeCreate(List<OrderItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("Order items cannot be empty");
+        }
+        for (OrderItemRequest item : items) {
+            try {
+                productServiceClient.reserveStock(item.productId(), item.quantity());
+            } catch (FeignException.Conflict conflict) {
+                throw new IllegalArgumentException("Insufficient stock for productId=" + item.productId());
+            } catch (FeignException exception) {
+                throw new IllegalStateException("Product service reservation failed for productId=" + item.productId(), exception);
+            }
+        }
     }
 
     public OrderResponse updateOrderStatus(Long id, String status) {

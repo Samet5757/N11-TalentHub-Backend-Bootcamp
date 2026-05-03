@@ -1,5 +1,6 @@
 package com.ecommerce.order.service;
 
+import com.ecommerce.order.client.ProductServiceClient;
 import com.ecommerce.order.dto.OrderItemRequest;
 import com.ecommerce.order.dto.OrderRequest;
 import com.ecommerce.order.dto.OrderResponse;
@@ -21,6 +22,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,12 +36,14 @@ class OrderServiceTest {
     private OrderSagaPublisher orderSagaPublisher;
     @Mock
     private OrderNotificationOutboxService orderNotificationOutboxService;
+    @Mock
+    private ProductServiceClient productServiceClient;
 
     @InjectMocks
     private OrderService orderService;
 
     @Test
-    void createOrder_shouldCalculateFinalAmountAndPublishEvent() {
+    void createOrder_shouldCalculateFinalAmountAndReserveStock() {
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);
             order.setId(99L);
@@ -63,7 +67,7 @@ class OrderServiceTest {
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
-        verify(orderSagaPublisher).publishOrderCreated(captor.getValue());
+        verify(productServiceClient).reserveStock(eq(10L), eq(2));
 
         Order saved = captor.getValue();
         assertThat(saved.getCreatedAt()).isBeforeOrEqualTo(LocalDateTime.now());

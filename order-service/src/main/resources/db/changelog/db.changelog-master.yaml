@@ -3,3 +3,7 @@ databaseChangeLog:
       file: db/changelog/changes/db.changelog-001-init.sql
   - include:
       file: db/changelog/changes/db.changelog-002-notification-outbox.sql
+  - include:
+      file: db/changelog/changes/db.changelog-003-fix-dead-letter-payload-type.sql
+  - include:
+      file: db/changelog/changes/db.changelog-004-fix-outbox-payload-type.sql

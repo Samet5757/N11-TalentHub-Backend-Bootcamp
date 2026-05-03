@@ -42,6 +42,12 @@ public class ProductController {
         return ResponseEntity.ok(updated);
     }
 
+    @PostMapping("/{id}/reserve")
+    public ResponseEntity<Void> reserveStock(@PathVariable Long id, @RequestParam Integer quantity) {
+        productService.reserveStock(id, quantity);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         ProductResponse created = productService.createProduct(request);
